@@ -258,3 +258,7 @@ def get_interventions(
     if pending_only:
         q = q.filter(Intervention.is_actioned == False)
     return [InterventionOut.model_validate(i) for i in q.order_by(Intervention.created_at.desc()).all()]
+
+
+from fastapi import APIRouter as _APIRouter
+semester_gpa_router = _APIRouter(prefix="/semester-gpa", tags=["Semester GPA"])
