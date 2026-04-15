@@ -219,12 +219,11 @@ class CourseOut(BaseModel):
 
 
 class CourseCreate(BaseModel):
-    code: str
-    name: str
+    course_code: str
+    course_name: str
     credits: int = 3
-    semester: int = Field(ge=1, le=2)
-    academic_year: str
-    total_classes: int = 30
+    semester: int
+    year: int
     lecturer_id: Optional[str] = None
 
 
@@ -232,9 +231,9 @@ class CourseCreate(BaseModel):
 
 class SemesterGPACreate(BaseModel):
     student_id: str
-    academic_year: str
-    semester: int = Field(ge=1, le=2)
-    gpa: float = Field(ge=0.0, le=4.0)
+    semester: int
+    year: int
+    gpa: float
 
 
 class SemesterGPAOut(BaseModel):
@@ -242,10 +241,9 @@ class SemesterGPAOut(BaseModel):
 
     id: str
     student_id: str
-    academic_year: str
     semester: int
+    year: int
     gpa: float
-    recorded_at: datetime
 
 
 # ─── DASHBOARD SUMMARIES ──────────────────────────────────────────────────────
