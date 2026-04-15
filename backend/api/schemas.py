@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, AliasChoices
 from typing import Optional, List
 from datetime import datetime
 from db.models import RiskLevel, UserRole, SESStatus
@@ -29,15 +29,14 @@ class UserCreate(BaseModel):
 
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     email: str
     full_name: str
     role: UserRole
     is_active: bool
     created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ─── STUDENT PROFILE ─────────────────────────────────────────────────────────
@@ -67,17 +66,17 @@ class StudentRegisterRequest(BaseModel):
 
 
 class StudentProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_number: str
+    full_name: str = ""
     programme: str
     year_of_study: int
     ses_status: SESStatus
     is_scholarship: bool
     is_employed_part_time: bool
     distance_from_campus_km: float
-
-    class Config:
-        from_attributes = True
 
 
 # ─── ATTENDANCE ───────────────────────────────────────────────────────────────
@@ -93,6 +92,8 @@ class AttendanceCreate(BaseModel):
 
 
 class AttendanceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_id: str
     course_id: str
@@ -103,9 +104,6 @@ class AttendanceOut(BaseModel):
     assignment_submissions: int
     attendance_rate: float = 0.0
     recorded_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ─── ASSESSMENT RESULT ────────────────────────────────────────────────────────
@@ -118,6 +116,8 @@ class AssessmentResultCreate(BaseModel):
 
 
 class AssessmentResultOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_id: str
     assessment_id: str
@@ -126,16 +126,13 @@ class AssessmentResultOut(BaseModel):
     percentage: Optional[float] = None
     recorded_at: datetime
 
-    class Config:
-        from_attributes = True
-
 
 # ─── RISK PREDICTION ─────────────────────────────────────────────────────────
 
 class RiskFactorDetail(BaseModel):
     factor: str
-    impact: float       # positive = increasing risk, negative = reducing risk
-    value: str          # human-readable value of the feature
+    impact: float
+    value: str
 
 
 class PredictionOut(BaseModel):
@@ -166,6 +163,8 @@ class InterventionUpdate(BaseModel):
 
 
 class InterventionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_id: str
     intervention_type: str
@@ -176,26 +175,28 @@ class InterventionOut(BaseModel):
     created_at: datetime
     actioned_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
-
 
 # ─── PREDICTION HISTORY ───────────────────────────────────────────────────────
 
 class PredictionHistoryPoint(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     risk_level: RiskLevel
     risk_score: float
     predicted_gpa: Optional[float]
-    predicted_at: datetime
-
-    class Config:
-        from_attributes = True
+    # RiskPrediction ORM model stores the timestamp as `created_at`;
+    # map it to `predicted_at` for the API output.
+    predicted_at: datetime = Field(
+        validation_alias=AliasChoices("predicted_at", "created_at")
+    )
 
 
 # ─── COURSES & ASSESSMENTS ───────────────────────────────────────────────────
 
 class AssessmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     course_id: str
     name: str
@@ -203,11 +204,10 @@ class AssessmentOut(BaseModel):
     max_marks: float
     weight_percent: float
 
-    class Config:
-        from_attributes = True
-
 
 class CourseOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     code: str
     name: str
@@ -217,8 +217,35 @@ class CourseOut(BaseModel):
     total_classes: int
     assessments: List[AssessmentOut] = []
 
-    class Config:
-        from_attributes = True
+
+class CourseCreate(BaseModel):
+    code: str
+    name: str
+    credits: int = 3
+    semester: int = Field(ge=1, le=2)
+    academic_year: str
+    total_classes: int = 30
+    lecturer_id: Optional[str] = None
+
+
+# ─── SEMESTER GPA ─────────────────────────────────────────────────────────────
+
+class SemesterGPACreate(BaseModel):
+    student_id: str
+    academic_year: str
+    semester: int = Field(ge=1, le=2)
+    gpa: float = Field(ge=0.0, le=4.0)
+
+
+class SemesterGPAOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    student_id: str
+    academic_year: str
+    semester: int
+    gpa: float
+    recorded_at: datetime
 
 
 # ─── DASHBOARD SUMMARIES ──────────────────────────────────────────────────────
