@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.env
+
+# ML models (large binary files)
+backend/ml/saved_models/*.json
+backend/ml/saved_models/*.pkl
+
+# Node / Angular
+node_modules/
+dist/
+.angular/
+*.js.map
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Database
+*.sqlite3
+
+# Logs
+*.log

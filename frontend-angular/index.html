@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AcademIQ — Student Performance Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1c2333;
+    --border: rgba(255,255,255,0.07);
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --teal: #14b8a6;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --green: #22c55e;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --muted2: #94a3b8;
+    --radius: 12px;
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --sidebar-w: 240px;
+    --header-h: 64px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── AUTH SCREEN ── */
+  .auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+  }
+  .auth-screen::before {
+    content: '';
+    position: absolute;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 44px;
+    width: 440px;
+    position: relative;
+    z-index: 1;
+  }
+  .auth-logo {
+    font-family: var(--font-head);
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .auth-logo span { color: var(--accent2); }
+  .auth-subtitle { color: var(--muted2); font-size: 14px; margin-bottom: 36px; }
+
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 500; color: var(--muted2); margin-bottom: 8px; letter-spacing: 0.3px; }
+  .form-group input, .form-group select {
+    width: 100%; padding: 12px 16px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 14px; font-family: var(--font-body);
+    transition: border-color .2s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--surface2); }
+
+  .btn-primary {
+    width: 100%; padding: 13px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 600; font-family: var(--font-body);
+    cursor: pointer; transition: opacity .2s, transform .15s;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .auth-toggle { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted2); }
+  .auth-toggle a { color: var(--accent2); cursor: pointer; text-decoration: none; font-weight: 500; }
+  .auth-toggle a:hover { text-decoration: underline; }
+
+  /* ── LAYOUT ── */
+  .app-layout { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 16px;
+    flex-shrink: 0;
+  }
+  .sidebar-logo {
+    font-family: var(--font-head);
+    font-size: 20px; font-weight: 800;
+    color: var(--text); padding: 0 8px; margin-bottom: 36px;
+    letter-spacing: -0.3px;
+  }
+  .sidebar-logo span { color: var(--accent2); }
+  .nav-section-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    color: var(--muted); text-transform: uppercase;
+    padding: 0 8px; margin-bottom: 8px; margin-top: 20px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 8px;
+    color: var(--muted2); font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: background .15s, color .15s;
+    margin-bottom: 2px;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent2); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  .sidebar-user {
+    margin-top: auto;
+    padding: 12px;
+    background: var(--surface2); border-radius: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .user-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--teal));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: white;
+    flex-shrink: 0;
+  }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role { font-size: 11px; color: var(--muted2); text-transform: capitalize; }
+  .logout-btn {
+    margin-left: auto; background: none; border: none;
+    color: var(--muted); cursor: pointer; font-size: 16px; padding: 4px;
+    transition: color .15s;
+  }
+  .logout-btn:hover { color: var(--red); }
+
+  /* ── MAIN CONTENT ── */
+  .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .top-bar {
+    height: var(--header-h);
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .page-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
+  .top-bar-actions { display: flex; align-items: center; gap: 12px; }
+
+  .content { flex: 1; overflow-y: auto; padding: 32px; }
+
+  /* ── CARDS & STATS ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 24px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::after {
+    content: ''; position: absolute; top: 0; right: 0;
+    width: 3px; height: 100%;
+  }
+  .stat-card.low::after { background: var(--green); }
+  .stat-card.medium::after { background: var(--amber); }
+  .stat-card.high::after { background: var(--red); }
+  .stat-card.total::after { background: var(--accent); }
+
+  .stat-label { font-size: 12px; color: var(--muted2); font-weight: 500; letter-spacing: 0.3px; margin-bottom: 10px; }
+  .stat-value { font-family: var(--font-head); font-size: 32px; font-weight: 800; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--muted2); margin-top: 6px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+  }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--muted2); letter-spacing: 0.3px; margin-bottom: 20px; text-transform: uppercase; }
+
+  /* ── RISK BADGE ── */
+  .risk-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .risk-badge.low { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .risk-badge.medium { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .risk-badge.high { background: rgba(239,68,68,0.15); color: #f87171; }
+  .risk-badge.critical { background: rgba(239,68,68,0.25); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
+  .risk-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── STUDENT LIST ── */
+  .student-table { width: 100%; border-collapse: collapse; }
+  .student-table th {
+    text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.8px;
+    color: var(--muted); text-transform: uppercase; padding: 0 0 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .student-table td { padding: 14px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .student-table tr:last-child td { border-bottom: none; }
+  .student-table tr { cursor: pointer; transition: background .15s; }
+  .student-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .student-name { font-weight: 500; }
+  .student-number { color: var(--muted2); font-size: 12px; margin-top: 2px; }
+
+  /* ── RISK METER ── */
+  .risk-meter { position: relative; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .risk-fill { height: 100%; border-radius: 4px; transition: width .6s ease; }
+  .risk-fill.low { background: var(--green); }
+  .risk-fill.medium { background: var(--amber); }
+  .risk-fill.high { background: var(--red); }
+  .risk-fill.critical { background: linear-gradient(90deg, var(--red), #dc2626); }
+
+  /* ── RISK SCORE CIRCLE ── */
+  .score-circle {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--pct) * 1%), var(--surface2) 0);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; margin: 0 auto 16px;
+  }
+  .score-inner {
+    width: 90px; height: 90px; border-radius: 50%;
+    background: var(--surface); display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .score-num { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .score-label { font-size: 10px; color: var(--muted2); }
+
+  /* ── FACTOR BAR ── */
+  .factor-item { margin-bottom: 14px; }
+  .factor-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .factor-name { color: var(--text); }
+  .factor-val { color: var(--muted2); font-size: 12px; }
+  .factor-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .factor-fill { height: 100%; border-radius: 3px; }
+  .factor-fill.negative { background: var(--red); }
+  .factor-fill.positive { background: var(--green); }
+
+  /* ── RECOMMENDATION CARDS ── */
+  .rec-item {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; font-size: 13px; line-height: 1.6; color: var(--muted2);
+    margin-bottom: 10px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .rec-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── ATTENDANCE CHART ── */
+  .att-bars { display: flex; align-items: flex-end; gap: 6px; height: 80px; }
+  .att-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .att-bar { width: 100%; border-radius: 3px 3px 0 0; transition: height .4s ease; min-height: 4px; }
+  .att-week { font-size: 9px; color: var(--muted); }
+
+  /* ── ALERTS ── */
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px; border-radius: 10px; margin-bottom: 10px;
+    border: 1px solid transparent;
+  }
+  .alert-item.critical { background: rgba(239,68,68,0.07); border-color: rgba(239,68,68,0.2); }
+  .alert-item.high { background: rgba(245,158,11,0.07); border-color: rgba(245,158,11,0.2); }
+  .alert-meta { font-size: 12px; color: var(--muted2); margin-top: 4px; }
+
+  /* ── INTERVENTION FORM ── */
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .btn-sm {
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; font-family: var(--font-body); transition: opacity .15s;
+  }
+  .btn-sm.primary { background: var(--accent); color: white; }
+  .btn-sm.secondary { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+  .btn-sm:hover { opacity: 0.85; }
+
+  /* ── LOADING / STATES ── */
+  .spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty-state { text-align: center; color: var(--muted2); padding: 48px; font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 2px; background: var(--surface2); border-radius: 10px; padding: 4px; margin-bottom: 24px; }
+  .tab { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--muted2); transition: all .15s; }
+  .tab.active { background: var(--surface); color: var(--text); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* ── SCROLL ── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── TOAST ── */
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px; font-size: 13px; font-weight: 500;
+    animation: slideIn .25s ease;
+    display: flex; align-items: center; gap: 10px;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .toast.success { border-color: rgba(34,197,94,0.4); }
+  .toast.error { border-color: rgba(239,68,68,0.4); }
+
+  /* ── HEADER SEARCH ── */
+  .search-box {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; color: var(--text); font-family: var(--font-body);
+    width: 240px; outline: none;
+  }
+  .search-box::placeholder { color: var(--muted); }
+  .search-box:focus { border-color: var(--accent); }
+
+  .btn-icon {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    transition: all .15s;
+  }
+  .btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag.ses-low { background: rgba(239,68,68,0.1); color: #f87171; }
+  .tag.ses-middle { background: rgba(245,158,11,0.1); color: #fbbf24; }
+  .tag.ses-high { background: rgba(34,197,94,0.1); color: #4ade80; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ════ AUTH SCREEN ════ -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-logo">Academ<span>IQ</span></div>
+    <div class="auth-subtitle">Student Performance Predictor — Sign in to continue</div>
+
+    <div id="loginForm">
+      <div class="form-group">
+        <label>Email address</label>
+        <input type="email" id="loginEmail" placeholder="you@university.ac.zm" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" onclick="handleLogin()" id="loginBtn">Sign in</button>
+      <div class="auth-toggle">No account? <a onclick="showRegister()">Register here</a></div>
+    </div>
+
+    <div id="registerForm" class="hidden">
+      <div class="form-row">
+        <div class="form-group"><label>Full name</label><input type="text" id="regName" placeholder="Emeldah Miyanda"></div>
+        <div class="form-group"><label>Role</label>
+          <select id="regRole">
+            <option value="student">Student</option>
+            <option value="lecturer">Lecturer</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="you@university.ac.zm"></div>
+      <div class="form-group"><label>Password</label><input type="password" id="regPassword" placeholder="Min. 8 characters"></div>
+      <div id="studentFields">
+        <div class="form-row">
+          <div class="form-group"><label>Student number</label><input type="text" id="regStudentNum" placeholder="21164180"></div>
+          <div class="form-group"><label>Year of study</label>
+            <select id="regYear"><option value="1">Year 1</option><option value="2">Year 2</option><option value="3" selected>Year 3</option><option value="4">Year 4</option></select>
+          </div>
+        </div>
+        <div class="form-group"><label>Programme</label><input type="text" id="regProgramme" placeholder="Computer Science"></div>
+        <div class="form-row">
+          <div class="form-group"><label>Socioeconomic status</label>
+            <select id="regSES"><option value="low">Low</option><option value="middle" selected>Middle</option><option value="high">High</option></select>
+          </div>
+          <div class="form-group"><label>Scholarship?</label>
+            <select id="regScholarship"><option value="false">No</option><option value="true">Yes</option></select>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="handleRegister()" id="registerBtn">Create account</button>
+      <div class="auth-toggle">Have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ APP LAYOUT ════ -->
+<div class="app-layout hidden" id="appLayout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">Academ<span>IQ</span></div>
+
+    <div class="nav-section-label">Overview</div>
+    <div class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard">
+      <span class="nav-icon">⬡</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="navigate('students')" id="nav-students">
+      <span class="nav-icon">◎</span> Students
+    </div>
+    <div class="nav-item" onclick="navigate('predictions')" id="nav-predictions">
+      <span class="nav-icon">◈</span> Risk Predictions
+    </div>
+
+    <div class="nav-section-label">Management</div>
+    <div class="nav-item" onclick="navigate('attendance')" id="nav-attendance">
+      <span class="nav-icon">▦</span> Attendance
+    </div>
+    <div class="nav-item" onclick="navigate('interventions')" id="nav-interventions">
+      <span class="nav-icon">◐</span> Interventions
+    </div>
+
+    <div class="nav-section-label">Account</div>
+    <div class="nav-item" onclick="navigate('myprofile')" id="nav-myprofile">
+      <span class="nav-icon">◯</span> My Profile
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar" id="sidebarAvatar">?</div>
+      <div>
+        <div class="user-name" id="sidebarName">—</div>
+        <div class="user-role" id="sidebarRole">—</div>
+      </div>
+      <button class="logout-btn" onclick="logout()" title="Sign out">↩</button>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <div class="top-bar">
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="top-bar-actions">
+        <input class="search-box" placeholder="🔍  Search students..." id="globalSearch" oninput="onSearch(this.value)">
+        <button class="btn-icon" title="Refresh" onclick="refreshPage()">↻</button>
+      </div>
+    </div>
+
+    <!-- ── DASHBOARD VIEW ── -->
+    <div class="content hidden" id="view-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card total">
+          <div class="stat-label">Total Students</div>
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-sub">Enrolled this semester</div>
+        </div>
+        <div class="stat-card low">
+          <div class="stat-label">Low Risk</div>
+          <div class="stat-value" id="statLow" style="color:var(--green)">—</div>
+          <div class="stat-sub">On track</div>
+        </div>
+        <div class="stat-card medium">
+          <div class="stat-label">Medium Risk</div>
+          <div class="stat-value" id="statMedium" style="color:var(--amber)">—</div>
+          <div class="stat-sub">Needs monitoring</div>
+        </div>
+        <div class="stat-card high">
+          <div class="stat-label">High / Critical</div>
+          <div class="stat-value" id="statHigh" style="color:var(--red)">—</div>
+          <div class="stat-sub" id="statAtRiskPct">—% at risk</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title">At-risk students requiring action</div>
+          <div id="alertsList">
+            <div class="empty-state"><div class="empty-icon">◎</div>Loading alerts...</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Risk distribution</div>
+          <canvas id="riskPieCanvas" width="200" height="200" style="margin:0 auto;display:block;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STUDENTS VIEW ── -->
+    <div class="content hidden" id="view-students">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+          <div class="card-title" style="margin:0">All students</div>
+          <button class="btn-sm primary" onclick="navigate('predictions')">Run predictions ◈</button>
+        </div>
+        <table class="student-table" id="studentTable">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Programme</th>
+              <th>Year</th>
+              <th>SES</th>
+              <th>Attendance</th>
+              <th>Risk level</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody">
+            <tr><td colspan="6" class="empty-state">Loading students...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── PREDICTIONS VIEW ── -->
+    <div class="content hidden" id="view-predictions">
+      <div id="predictionContent">
+        <div class="empty-state">
+          <div class="empty-icon">◈</div>
+          <div>Select a student from the Students tab to view their risk prediction.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STUDENT DETAIL PREDICTION ── -->
+    <div class="content hidden" id="view-studentDetail">
+      <button class="btn-sm secondary" onclick="navigate('students')" style="margin-bottom:20px">← Back to students</button>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Risk assessment</div>
+          <div id="detailRiskContent">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Key risk factors</div>
+          <div id="detailFactors"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">Personalised recommendations</div>
+        <div id="detailRecs"></div>
+      </div>
+      <div class="card" style="margin-top:20px">
+        <div class="card-title">Create intervention</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="intType">
+              <option value="tutoring">Tutoring session</option>
+              <option value="counseling">Counseling referral</option>
+              <option value="alert">Lecturer alert</option>
+              <option value="resource">Learning resource</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="intDesc" placeholder="Describe the intervention...">
+          </div>
+        </div>
+        <button class="btn-sm primary" onclick="createIntervention()">Log intervention</button>
+      </div>
+    </div>
+
+    <!-- ── ATTENDANCE VIEW ── -->
+    <div class="content hidden" id="view-attendance">
+      <div class="card">
+        <div class="card-title">Record attendance (weekly)</div>
+        <div class="form-row">
+          <div class="form-group"><label>Student ID</label><input type="text" id="attStudentId" placeholder="Paste student profile ID"></div>
+          <div class="form-group"><label>Course ID</label><input type="text" id="attCourseId" placeholder="Course ID"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Week #</label><input type="number" id="attWeek" min="1" max="52" value="1"></div>
+          <div class="form-group"><label>Classes held</label><input type="number" id="attHeld" min="0" value="3"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Classes attended</label><input type="number" id="attAttended" min="0" value="3"></div>
+          <div class="form-group"><label>LMS logins</label><input type="number" id="attLMS" min="0" value="5"></div>
+        </div>
+        <button class="btn-sm primary" onclick="submitAttendance()">Record attendance</button>
+      </div>
+    </div>
+
+    <!-- ── INTERVENTIONS VIEW ── -->
+    <div class="content hidden" id="view-interventions">
+      <div class="card">
+        <div class="card-title">All pending interventions</div>
+        <div id="interventionsList">
+          <div class="empty-state"><div class="empty-icon">◐</div>No pending interventions.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MY PROFILE VIEW (student) ── -->
+    <div class="content hidden" id="view-myprofile">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">My risk prediction</div>
+          <div id="myRiskContent">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">My recommendations</div>
+          <div id="myRecs"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-area -->
+</div><!-- end app-layout -->
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════
+const API = 'http://localhost:8000/api';
+let currentUser = null;
+let authToken = null;
+let allStudents = [];
+let currentStudentId = null;
+
+// ─── HTTP HELPER ─────────────────────────────────────────────
+async function api(method, path, body = null) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(API + path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || 'Request failed');
+    return data;
+  } catch (e) {
+    throw e;
+  }
+}
+
+// ─── TOAST ───────────────────────────────────────────────────
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = (type === 'success' ? '✓' : '✕') + ' ' + msg;
+  document.getElementById('toastContainer').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// ─── AUTH ────────────────────────────────────────────────────
+function showRegister() {
+  document.getElementById('loginForm').classList.add('hidden');
+  document.getElementById('registerForm').classList.remove('hidden');
+  document.getElementById('regRole').onchange = function() {
+    document.getElementById('studentFields').classList.toggle('hidden', this.value !== 'student');
+  };
+}
+function showLogin() {
+  document.getElementById('registerForm').classList.add('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+}
+
+async function handleLogin() {
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  try {
+    const data = await api('POST', '/auth/login', {
+      email: document.getElementById('loginEmail').value,
+      password: document.getElementById('loginPassword').value,
+    });
+    authToken = data.access_token;
+    currentUser = { id: data.user_id, full_name: data.full_name, role: data.role };
+    enterApp();
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in';
+  }
+}
+
+async function handleRegister() {
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = 'Creating account...';
+  try {
+    const role = document.getElementById('regRole').value;
+    const userData = {
+      email: document.getElementById('regEmail').value,
+      password: document.getElementById('regPassword').value,
+      full_name: document.getElementById('regName').value,
+      role,
+    };
+    if (role === 'student') {
+      const profileData = {
+        student_number: document.getElementById('regStudentNum').value,
+        year_of_study: parseInt(document.getElementById('regYear').value),
+        programme: document.getElementById('regProgramme').value,
+        ses_status: document.getElementById('regSES').value,
+        is_scholarship: document.getElementById('regScholarship').value === 'true',
+      };
+      await api('POST', '/auth/register/student', { ...userData, ...profileData });
+    } else {
+      await api('POST', '/auth/register', userData);
+    }
+    toast('Account created — sign in now!');
+    showLogin();
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create account';
+  }
+}
+
+function logout() {
+  authToken = null; currentUser = null; allStudents = [];
+  document.getElementById('appLayout').classList.add('hidden');
+  document.getElementById('authScreen').classList.remove('hidden');
+}
+
+// ─── APP INIT ─────────────────────────────────────────────────
+function enterApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appLayout').classList.remove('hidden');
+
+  const a = document.getElementById('sidebarAvatar');
+  a.textContent = currentUser.full_name.charAt(0).toUpperCase();
+  document.getElementById('sidebarName').textContent = currentUser.full_name;
+  document.getElementById('sidebarRole').textContent = currentUser.role;
+
+  // Hide lecturer/admin nav for students
+  const isStudent = currentUser.role === 'student';
+  ['students','attendance','interventions'].forEach(id => {
+    document.getElementById('nav-' + id).classList.toggle('hidden', isStudent);
+  });
+
+  if (isStudent) {
+    navigate('myprofile');
+  } else {
+    navigate('dashboard');
+    loadDashboard();
+    loadStudents();
+  }
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────
+const PAGE_TITLES = {
+  dashboard: 'Dashboard', students: 'Students', predictions: 'Risk Predictions',
+  attendance: 'Record Attendance', interventions: 'Interventions',
+  myprofile: 'My Profile', studentDetail: 'Student Detail'
+};
+
+function navigate(view) {
+  document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+  const el = document.getElementById('view-' + view);
+  if (el) el.classList.remove('hidden');
+  const nav = document.getElementById('nav-' + view);
+  if (nav) nav.classList.add('active');
+  document.getElementById('pageTitle').textContent = PAGE_TITLES[view] || view;
+
+  if (view === 'myprofile' && currentUser.role === 'student') loadMyProfile();
+  if (view === 'interventions') loadAllInterventions();
+}
+
+function refreshPage() { window.location.reload(); }
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const summary = await api('GET', '/predictions/risk-summary');
+    document.getElementById('statTotal').textContent = summary.total_students;
+    document.getElementById('statLow').textContent = summary.low_risk;
+    document.getElementById('statMedium').textContent = summary.medium_risk;
+    document.getElementById('statHigh').textContent = summary.high_risk + summary.critical_risk;
+    document.getElementById('statAtRiskPct').textContent = summary.at_risk_percentage + '% at risk';
+    drawPie(summary);
+    renderAlerts(summary);
+  } catch (e) {
+    toast('Could not load dashboard summary', 'error');
+  }
+}
+
+function drawPie(s) {
+  const canvas = document.getElementById('riskPieCanvas');
+  if (!canvas.getContext) return;
+  const ctx = canvas.getContext('2d');
+  const data = [s.low_risk, s.medium_risk, s.high_risk, s.critical_risk];
+  const colors = ['#22c55e', '#f59e0b', '#ef4444', '#dc2626'];
+  const labels = ['Low','Medium','High','Critical'];
+  const total = data.reduce((a,b) => a+b, 0) || 1;
+  let start = -Math.PI / 2;
+  ctx.clearRect(0, 0, 200, 200);
+  data.forEach((v, i) => {
+    const angle = (v / total) * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(100, 100);
+    ctx.arc(100, 100, 80, start, start + angle);
+    ctx.closePath();
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+    start += angle;
+  });
+  // Donut hole
+  ctx.beginPath();
+  ctx.arc(100, 100, 50, 0, 2 * Math.PI);
+  ctx.fillStyle = '#111827';
+  ctx.fill();
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = 'bold 18px Syne, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(total, 100, 96);
+  ctx.font = '11px DM Sans, sans-serif';
+  ctx.fillStyle = '#64748b';
+  ctx.fillText('students', 100, 114);
+}
+
+function renderAlerts(summary) {
+  const list = document.getElementById('alertsList');
+  if (summary.high_risk + summary.critical_risk === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">✓</div>No critical alerts right now.</div>';
+    return;
+  }
+  list.innerHTML = `
+    ${summary.critical_risk > 0 ? `
+    <div class="alert-item critical">
+      <div>⚠️</div>
+      <div>
+        <div style="font-weight:600;font-size:14px">${summary.critical_risk} student${summary.critical_risk > 1 ? 's' : ''} at CRITICAL risk</div>
+        <div class="alert-meta">Immediate intervention required — view predictions tab</div>
+      </div>
+    </div>` : ''}
+    ${summary.high_risk > 0 ? `
+    <div class="alert-item high">
+      <div>⚡</div>
+      <div>
+        <div style="font-weight:600;font-size:14px">${summary.high_risk} student${summary.high_risk > 1 ? 's' : ''} at HIGH risk</div>
+        <div class="alert-meta">Targeted support recommended this week</div>
+      </div>
+    </div>` : ''}
+    <div style="margin-top:16px">
+      <button class="btn-sm primary" onclick="navigate('students')">View all students →</button>
+    </div>`;
+}
+
+// ─── STUDENTS ────────────────────────────────────────────────
+async function loadStudents() {
+  try {
+    allStudents = await api('GET', '/students/');
+    renderStudentTable(allStudents);
+  } catch (e) {
+    document.getElementById('studentTableBody').innerHTML =
+      `<tr><td colspan="6" class="empty-state">Could not load students — is the API running?</td></tr>`;
+  }
+}
+
+function renderStudentTable(students) {
+  const tbody = document.getElementById('studentTableBody');
+  if (!students.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No students found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = students.map(s => `
+    <tr onclick="openStudentDetail('${s.id}')">
+      <td>
+        <div class="student-name">${s.student_number}</div>
+        <div class="student-number">${s.programme}</div>
+      </td>
+      <td>${s.programme}</td>
+      <td>Year ${s.year_of_study}</td>
+      <td><span class="tag ses-${s.ses_status}">${s.ses_status}</span></td>
+      <td>—</td>
+      <td><span class="risk-badge medium"><span class="risk-dot"></span>Pending</span></td>
+    </tr>`).join('');
+}
+
+function onSearch(val) {
+  const q = val.toLowerCase();
+  const filtered = allStudents.filter(s =>
+    s.student_number.toLowerCase().includes(q) ||
+    s.programme.toLowerCase().includes(q)
+  );
+  renderStudentTable(filtered);
+}
+
+// ─── STUDENT DETAIL / PREDICTION ──────────────────────────────
+async function openStudentDetail(studentId) {
+  currentStudentId = studentId;
+  navigate('studentDetail');
+  document.getElementById('detailRiskContent').innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+  document.getElementById('detailFactors').innerHTML = '';
+  document.getElementById('detailRecs').innerHTML = '';
+
+  try {
+    const pred = await api('GET', '/predictions/student/' + studentId);
+    renderDetailRisk(pred);
+    renderFactors(pred.risk_factors);
+    renderRecs(pred.recommendations, 'detailRecs');
+  } catch (e) {
+    document.getElementById('detailRiskContent').innerHTML =
+      '<div class="empty-state">Not enough data to generate prediction yet.<br><small>Add attendance and assessment records first.</small></div>';
+  }
+}
+
+function renderDetailRisk(pred) {
+  const pct = Math.round(pred.risk_score * 100);
+  const colors = { low: 'var(--green)', medium: 'var(--amber)', high: 'var(--red)', critical: 'var(--red)' };
+  document.getElementById('detailRiskContent').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="--pct:${pct}" class="score-circle" style="background:conic-gradient(${colors[pred.risk_level]} ${pct}%, var(--surface2) 0)">
+        <div class="score-inner">
+          <div class="score-num">${pct}%</div>
+          <div class="score-label">risk score</div>
+        </div>
+      </div>
+      <div><span class="risk-badge ${pred.risk_level}"><span class="risk-dot"></span>${pred.risk_level.toUpperCase()} RISK</span></div>
+      ${pred.predicted_gpa ? `<div style="margin-top:10px;font-size:13px;color:var(--muted2)">Predicted GPA: <strong>${pred.predicted_gpa}</strong></div>` : ''}
+    </div>
+    <div style="font-size:13px;color:var(--muted2)">
+      <strong style="color:var(--text)">${pred.student_name}</strong> · ${pred.student_number}
+      <br>Prediction run at ${new Date(pred.predicted_at).toLocaleString()}
+    </div>`;
+}
+
+function renderFactors(factors) {
+  const el = document.getElementById('detailFactors');
+  el.innerHTML = factors.map(f => {
+    const isRisk = f.impact > 0;
+    const barWidth = Math.min(Math.abs(f.impact) * 300, 100);
+    return `
+      <div class="factor-item">
+        <div class="factor-header">
+          <span class="factor-name">${f.factor}</span>
+          <span class="factor-val">${f.value}</span>
+        </div>
+        <div class="factor-bar">
+          <div class="factor-fill ${isRisk ? 'negative' : 'positive'}" style="width:${barWidth}%"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderRecs(recs, containerId) {
+  const icons = { 0: '📚', 1: '👤', 2: '⚠️', 3: '⏰', 4: '💬', 5: '✅' };
+  document.getElementById(containerId).innerHTML = recs.map((r, i) =>
+    `<div class="rec-item"><span class="rec-icon">${icons[i] || '▸'}</span><span>${r}</span></div>`
+  ).join('');
+}
+
+// ─── INTERVENTIONS ────────────────────────────────────────────
+async function createIntervention() {
+  if (!currentStudentId) return;
+  try {
+    await api('POST', '/interventions/', {
+      student_id: currentStudentId,
+      intervention_type: document.getElementById('intType').value,
+      description: document.getElementById('intDesc').value,
+      recommended_by: currentUser.id,
+    });
+    toast('Intervention logged successfully');
+    document.getElementById('intDesc').value = '';
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function loadAllInterventions() {
+  // simplified: show message to select a student
+  document.getElementById('interventionsList').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">◐</div>Open a student profile to view and create interventions.</div>';
+}
+
+// ─── ATTENDANCE ────────────────────────────────────────────────
+async function submitAttendance() {
+  try {
+    await api('POST', '/attendance/', {
+      student_id: document.getElementById('attStudentId').value,
+      course_id: document.getElementById('attCourseId').value,
+      week_number: parseInt(document.getElementById('attWeek').value),
+      classes_held: parseInt(document.getElementById('attHeld').value),
+      classes_attended: parseInt(document.getElementById('attAttended').value),
+      lms_logins: parseInt(document.getElementById('attLMS').value),
+      assignment_submissions: 0,
+    });
+    toast('Attendance recorded');
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ─── MY PROFILE (student) ────────────────────────────────────
+async function loadMyProfile() {
+  document.getElementById('myRiskContent').innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+  try {
+    const pred = await api('GET', '/predictions/my');
+    renderMyRisk(pred);
+    renderRecs(pred.recommendations, 'myRecs');
+  } catch (e) {
+    document.getElementById('myRiskContent').innerHTML =
+      '<div class="empty-state">No prediction available yet.<br><small>Your lecturer needs to log your attendance first.</small></div>';
+    document.getElementById('myRecs').innerHTML = '';
+  }
+}
+
+function renderMyRisk(pred) {
+  const pct = Math.round(pred.risk_score * 100);
+  const colors = { low: 'var(--green)', medium: 'var(--amber)', high: 'var(--red)', critical: 'var(--red)' };
+  document.getElementById('myRiskContent').innerHTML = `
+    <div style="text-align:center;margin-bottom:20px">
+      <div class="score-circle" style="background:conic-gradient(${colors[pred.risk_level]} ${pct}%, var(--surface2) 0)">
+        <div class="score-inner">
+          <div class="score-num">${pct}%</div>
+          <div class="score-label">risk score</div>
+        </div>
+      </div>
+      <span class="risk-badge ${pred.risk_level}"><span class="risk-dot"></span>${pred.risk_level.toUpperCase()} RISK</span>
+    </div>
+    <div style="font-size:13px;color:var(--muted2);text-align:center">
+      ${pred.predicted_gpa ? `Predicted GPA: <strong style="color:var(--text)">${pred.predicted_gpa}</strong><br>` : ''}
+      Last updated: ${new Date(pred.predicted_at).toLocaleDateString()}
+    </div>
+    <div style="margin-top:20px">
+      <div class="card-title">What's affecting your score</div>
+      ${pred.risk_factors.map(f => {
+        const isRisk = f.impact > 0;
+        const barWidth = Math.min(Math.abs(f.impact) * 300, 100);
+        return `<div class="factor-item">
+          <div class="factor-header"><span class="factor-name">${f.factor}</span><span class="factor-val">${f.value}</span></div>
+          <div class="factor-bar"><div class="factor-fill ${isRisk ? 'negative' : 'positive'}" style="width:${barWidth}%"></div></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+</script>
+</body>
+</html>
