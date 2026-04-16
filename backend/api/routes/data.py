@@ -85,6 +85,12 @@ def student_dashboard(
 
 
 def _build_dashboard(profile: StudentProfile, db: Session) -> StudentDashboard:
+    from ml.predictor import predict_student_risk, generate_recommendations
+    from api.schemas import RiskFactorDetail, PredictionOut as PredOut
+    from db.models import RiskPrediction as RiskPred
+    from datetime import datetime
+    import json
+
     attendance_rows = db.query(AttendanceRecord).filter(
         AttendanceRecord.student_id == profile.id
     ).all()
@@ -112,18 +118,38 @@ def _build_dashboard(profile: StudentProfile, db: Session) -> StudentDashboard:
         .all()
     )
 
-    from api.routes.predictions import get_prediction
-    from db.models import RiskPrediction
-    latest_prediction_record = (
-        db.query(RiskPrediction)
-        .filter(RiskPrediction.student_id == profile.id)
-        .order_by(RiskPrediction.created_at.desc())
-        .first()
-    )
+    # Generate current risk prediction
+    current_risk_out = None
+    result = predict_student_risk(profile.id, db)
+    if result is not None:
+        recommendations = generate_recommendations(result)
+        prediction_record = RiskPred(
+            student_id=profile.id,
+            risk_level=result["risk_level"],
+            risk_score=result["risk_score"],
+            predicted_gpa=result.get("predicted_gpa"),
+            top_risk_factors=json.dumps(result["risk_factors"]),
+        )
+        db.add(prediction_record)
+        db.commit()
+
+        user = profile.user
+        current_risk_out = PredOut(
+            student_id=profile.id,
+            student_name=user.full_name,
+            student_number=profile.student_number,
+            risk_level=result["risk_level"],
+            risk_score=result["risk_score"],
+            predicted_gpa=result.get("predicted_gpa"),
+            risk_factors=[RiskFactorDetail(**f) for f in result["risk_factors"]],
+            recommendations=recommendations,
+            model_version="v1",
+            predicted_at=datetime.utcnow(),
+        )
 
     return StudentDashboard(
         profile=StudentProfileOut.model_validate(profile),
-        current_risk=None,
+        current_risk=current_risk_out,
         attendance_summary=attendance_summary,
         recent_results=[AssessmentResultOut.model_validate(r) for r in recent_results],
         pending_interventions=[InterventionOut.model_validate(i) for i in pending_interventions],
