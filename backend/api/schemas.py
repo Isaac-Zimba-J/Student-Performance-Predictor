@@ -179,7 +179,7 @@ class InterventionOut(BaseModel):
 # ─── PREDICTION HISTORY ───────────────────────────────────────────────────────
 
 class PredictionHistoryPoint(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
     risk_level: RiskLevel
@@ -233,7 +233,7 @@ class SemesterGPACreate(BaseModel):
     student_id: str
     semester: int
     year: int
-    gpa: float
+    gpa: float = Field(ge=0.0, le=4.0)
 
 
 class SemesterGPAOut(BaseModel):
