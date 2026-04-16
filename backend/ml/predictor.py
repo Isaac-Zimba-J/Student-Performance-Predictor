@@ -311,7 +311,6 @@ def train_models(training_data: pd.DataFrame):
         n_estimators=200,
         max_depth=5,
         learning_rate=0.05,
-        use_label_encoder=False,
         eval_metric="mlogloss",
         random_state=42,
     )
