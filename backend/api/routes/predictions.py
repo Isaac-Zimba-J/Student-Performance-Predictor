@@ -101,27 +101,10 @@ def risk_summary(
     """Cohort-level risk breakdown for the dashboard."""
     from db.models import RiskLevel as RL
 
-    # Get latest prediction per student
-    subq = (
-        db.query(
-            RiskPrediction.student_id,
-            db.query(RiskPrediction.id)
-            .filter(RiskPrediction.student_id == RiskPrediction.student_id)
-            .order_by(RiskPrediction.created_at.desc())
-            .limit(1)
-            .correlate(RiskPrediction)
-            .scalar_subquery()
-            .label("latest_id"),
-        )
-        .distinct()
-        .subquery()
-    )
-
     all_predictions = db.query(RiskPrediction).order_by(
         RiskPrediction.student_id, RiskPrediction.created_at.desc()
     ).all()
 
-    # Simple dedup: latest per student
     seen = set()
     latest = []
     for p in all_predictions:
