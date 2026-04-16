@@ -88,7 +88,6 @@ def _build_dashboard(profile: StudentProfile, db: Session) -> StudentDashboard:
     from ml.predictor import predict_student_risk, generate_recommendations
     from api.schemas import RiskFactorDetail, PredictionOut as PredOut
     from db.models import RiskPrediction as RiskPred
-    from datetime import datetime
     import json
 
     attendance_rows = db.query(AttendanceRecord).filter(
@@ -118,22 +117,18 @@ def _build_dashboard(profile: StudentProfile, db: Session) -> StudentDashboard:
         .all()
     )
 
-    # Generate current risk prediction
+    # Generate current risk prediction; gracefully degrade if predictor raises
     current_risk_out = None
-    result = predict_student_risk(profile.id, db)
+    try:
+        result = predict_student_risk(profile.id, db)
+    except Exception:
+        result = None
+
     if result is not None:
         recommendations = generate_recommendations(result)
-        prediction_record = RiskPred(
-            student_id=profile.id,
-            risk_level=result["risk_level"],
-            risk_score=result["risk_score"],
-            predicted_gpa=result.get("predicted_gpa"),
-            top_risk_factors=json.dumps(result["risk_factors"]),
-        )
-        db.add(prediction_record)
-        db.commit()
-
         user = profile.user
+        now = datetime.utcnow()
+        # Build the response object first; only commit if serialisation succeeds
         current_risk_out = PredOut(
             student_id=profile.id,
             student_name=user.full_name,
@@ -144,8 +139,17 @@ def _build_dashboard(profile: StudentProfile, db: Session) -> StudentDashboard:
             risk_factors=[RiskFactorDetail(**f) for f in result["risk_factors"]],
             recommendations=recommendations,
             model_version="v1",
-            predicted_at=datetime.utcnow(),
+            predicted_at=now,
         )
+        prediction_record = RiskPred(
+            student_id=profile.id,
+            risk_level=result["risk_level"],
+            risk_score=result["risk_score"],
+            predicted_gpa=result.get("predicted_gpa"),
+            top_risk_factors=json.dumps(result["risk_factors"]),
+        )
+        db.add(prediction_record)
+        db.commit()
 
     return StudentDashboard(
         profile=StudentProfileOut.model_validate(profile),
