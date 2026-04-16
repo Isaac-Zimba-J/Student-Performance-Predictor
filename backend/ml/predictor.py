@@ -90,12 +90,22 @@ def build_features(student_id: str, db: Session) -> Optional[dict]:
     assignment_submission_rate = total_submissions / weeks
 
     # ── Assessment features ────────────────────────────────────────
-    result_rows = db.query(AssessmentResult).filter(
+    from sqlalchemy.orm import joinedload as _jl
+    result_rows = db.query(AssessmentResult).options(
+        _jl(AssessmentResult.assessment)
+    ).filter(
         AssessmentResult.student_id == student_id
     ).all()
 
-    scores = [r.marks_obtained for r in result_rows if r.marks_obtained is not None]
-    avg_score = (sum(scores) / len(scores)) if scores else 50.0
+    # Normalise to percentage using each assessment's own max_marks
+    pct_scores = [
+        (r.marks_obtained / r.assessment.max_marks * 100)
+        for r in result_rows
+        if r.marks_obtained is not None
+        and r.assessment is not None
+        and r.assessment.max_marks
+    ]
+    avg_score = (sum(pct_scores) / len(pct_scores)) if pct_scores else 50.0
     assessments_missed = sum(1 for r in result_rows if r.marks_obtained is None)
     late_submissions = sum(1 for r in result_rows if not r.submitted_on_time)
 
