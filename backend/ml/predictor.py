@@ -11,7 +11,7 @@ import json
 import numpy as np
 import pandas as pd
 from typing import Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from db.models import StudentProfile, AttendanceRecord, AssessmentResult, RiskLevel
 
 try:
@@ -90,9 +90,8 @@ def build_features(student_id: str, db: Session) -> Optional[dict]:
     assignment_submission_rate = total_submissions / weeks
 
     # ── Assessment features ────────────────────────────────────────
-    from sqlalchemy.orm import joinedload as _jl
     result_rows = db.query(AssessmentResult).options(
-        _jl(AssessmentResult.assessment)
+        joinedload(AssessmentResult.assessment)
     ).filter(
         AssessmentResult.student_id == student_id
     ).all()
@@ -103,7 +102,8 @@ def build_features(student_id: str, db: Session) -> Optional[dict]:
         for r in result_rows
         if r.marks_obtained is not None
         and r.assessment is not None
-        and r.assessment.max_marks
+        and r.assessment.max_marks is not None
+        and r.assessment.max_marks > 0
     ]
     avg_score = (sum(pct_scores) / len(pct_scores)) if pct_scores else 50.0
     assessments_missed = sum(1 for r in result_rows if r.marks_obtained is None)
