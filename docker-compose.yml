@@ -71,6 +71,23 @@ services:
     volumes:
       - model_data:/app/ml/saved_models
 
+  # ── Celery Beat (cron scheduler) ─────────────────────────────
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: celery -A tasks.celery_app beat --loglevel=info
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/student_predictor
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: change-this-in-production-please
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - model_data:/app/ml/saved_models
+
 volumes:
   pgdata:
   model_data:
