@@ -40,7 +40,8 @@ import { StudentProfile } from '../../../core/models';
         <tbody>
           <tr *ngFor="let s of filtered">
             <td>
-              <div class="student-name">{{ s.student_number }}</div>
+              <div class="student-name">{{ s.full_name }}</div>
+              <div style="font-size:11px;color:var(--muted2)">{{ s.student_number }}</div>
             </td>
             <td>{{ s.programme }}</td>
             <td>Year {{ s.year_of_study }}</td>
@@ -83,6 +84,7 @@ export class StudentListComponent implements OnInit {
       const q = this.searchQuery.toLowerCase();
       const matchesSearch = !q ||
         s.student_number.toLowerCase().includes(q) ||
+        s.full_name.toLowerCase().includes(q) ||
         s.programme.toLowerCase().includes(q);
       const matchesYear = !this.filterYear || s.year_of_study === +this.filterYear;
       return matchesSearch && matchesYear;

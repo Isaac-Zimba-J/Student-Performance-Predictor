@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from db.session import get_db
 from db.models import User, StudentProfile, AttendanceRecord, AssessmentResult, Intervention, Course, Assessment
@@ -50,15 +50,17 @@ students_router = APIRouter(prefix="/students", tags=["Students"])
 def list_students(
     programme: Optional[str] = None,
     year: Optional[int] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "lecturer")),
 ):
-    q = db.query(StudentProfile)
+    q = db.query(StudentProfile).options(joinedload(StudentProfile.user))
     if programme:
         q = q.filter(StudentProfile.programme == programme)
     if year:
         q = q.filter(StudentProfile.year_of_study == year)
-    return q.all()
+    return q.offset(skip).limit(limit).all()
 
 
 @students_router.get("/me/dashboard", response_model=StudentDashboard)
@@ -66,7 +68,12 @@ def my_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    profile = current_user.student_profile
+    profile = (
+        db.query(StudentProfile)
+        .options(joinedload(StudentProfile.user))
+        .filter(StudentProfile.user_id == current_user.id)
+        .first()
+    )
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found")
     return _build_dashboard(profile, db)
@@ -78,7 +85,12 @@ def student_dashboard(
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "lecturer")),
 ):
-    profile = db.query(StudentProfile).filter(StudentProfile.id == student_id).first()
+    profile = (
+        db.query(StudentProfile)
+        .options(joinedload(StudentProfile.user))
+        .filter(StudentProfile.id == student_id)
+        .first()
+    )
     if not profile:
         raise HTTPException(status_code=404, detail="Student not found")
     return _build_dashboard(profile, db)

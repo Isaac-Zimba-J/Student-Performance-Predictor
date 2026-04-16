@@ -29,6 +29,7 @@ export interface CurrentUser {
 export interface StudentProfile {
   id: string;
   student_number: string;
+  full_name: string;
   programme: string;
   year_of_study: number;
   ses_status: SESStatus;

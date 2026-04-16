@@ -69,6 +69,10 @@ class StudentProfile(Base):
     risk_predictions = relationship("RiskPrediction", back_populates="student")
     interventions = relationship("Intervention", back_populates="student")
 
+    @property
+    def full_name(self) -> str:
+        return self.user.full_name if self.user else ""
+
 
 # ─── COURSE ───────────────────────────────────────────────────────────────────
 
