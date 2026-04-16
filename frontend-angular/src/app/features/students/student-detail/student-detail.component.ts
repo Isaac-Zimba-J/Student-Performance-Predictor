@@ -2,8 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { PredictionService, InterventionService, AttendanceService } from '../../../core/services/api.services';
-import { PredictionOut, PredictionHistoryPoint, InterventionOut, AttendanceOut } from '../../../core/models';
+import { PredictionService, InterventionService, AttendanceService, SemesterGPAService } from '../../../core/services/api.services';
+import { PredictionOut, PredictionHistoryPoint, InterventionOut, AttendanceOut, SemesterGPAOut } from '../../../core/models';
 import { AuthService } from '../../../core/services/auth.service';
 
 interface ChartPoint { x: number; y: number; point: PredictionHistoryPoint; }
@@ -250,6 +250,37 @@ interface ChartPoint { x: number; y: number; point: PredictionHistoryPoint; }
         </div>
       </div>
     </div>
+
+    <!-- Semester GPA record -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title">Record semester GPA</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Academic year</label>
+          <input type="number" [(ngModel)]="gpaForm.year" placeholder="2024">
+        </div>
+        <div class="form-group">
+          <label>Semester</label>
+          <select [(ngModel)]="gpaForm.semester">
+            <option [ngValue]="1">Semester 1</option>
+            <option [ngValue]="2">Semester 2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>GPA (0.0–4.0)</label>
+          <input type="number" [(ngModel)]="gpaForm.gpa" min="0" max="4" step="0.1">
+        </div>
+      </div>
+      <button class="btn-sm primary" (click)="saveGPA()" [disabled]="savingGpa">
+        {{ savingGpa ? 'Saving...' : 'Save GPA' }}
+      </button>
+      <span *ngIf="gpaSuccess" style="color:var(--green);font-size:13px;margin-left:12px">✓ GPA recorded</span>
+      <div *ngIf="semesterGpas.length > 0" style="margin-top:12px;font-size:12px;color:var(--muted2)">
+        <span *ngFor="let g of semesterGpas" style="margin-right:16px">
+          {{ g.year }} S{{ g.semester }}: <strong style="color:var(--text)">{{ g.gpa.toFixed(2) }}</strong>
+        </span>
+      </div>
+    </div>
   `,
 })
 export class StudentDetailComponent implements OnInit {
@@ -264,6 +295,10 @@ export class StudentDetailComponent implements OnInit {
   intDesc = '';
   savingInt = false;
   intSuccess = '';
+  semesterGpas: SemesterGPAOut[] = [];
+  gpaForm = { year: new Date().getFullYear(), semester: 1, gpa: 2.5 };
+  savingGpa = false;
+  gpaSuccess = false;
   icons = ['📚', '👤', '⚠️', '⏰', '💬', '✅'];
   Math = Math;
   hoveredIdx = -1;
@@ -282,6 +317,7 @@ export class StudentDetailComponent implements OnInit {
     private interventionService: InterventionService,
     private attendanceService: AttendanceService,
     private auth: AuthService,
+    private gpaService: SemesterGPAService,
   ) {}
 
   ngOnInit() {
@@ -290,6 +326,7 @@ export class StudentDetailComponent implements OnInit {
     this.loadHistory();
     this.loadAttendance();
     this.loadInterventions();
+    this.loadGPAs();
   }
 
   loadPrediction() {
@@ -337,6 +374,25 @@ export class StudentDetailComponent implements OnInit {
         setTimeout(() => this.intSuccess = '', 3000);
       },
       error: () => { this.savingInt = false; },
+    });
+  }
+
+  loadGPAs() {
+    this.gpaService.getForStudent(this.studentId).subscribe({
+      next: data => this.semesterGpas = data,
+    });
+  }
+
+  saveGPA() {
+    this.savingGpa = true;
+    this.gpaService.record({ ...this.gpaForm, student_id: this.studentId }).subscribe({
+      next: g => {
+        this.semesterGpas = [g, ...this.semesterGpas];
+        this.savingGpa = false;
+        this.gpaSuccess = true;
+        setTimeout(() => this.gpaSuccess = false, 3000);
+      },
+      error: () => { this.savingGpa = false; },
     });
   }
 

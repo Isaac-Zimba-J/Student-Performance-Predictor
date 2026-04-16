@@ -68,6 +68,10 @@ class StudentProfile(Base):
     assessment_results = relationship("AssessmentResult", back_populates="student")
     risk_predictions = relationship("RiskPrediction", back_populates="student")
     interventions = relationship("Intervention", back_populates="student")
+    semester_gpas = relationship(
+        "SemesterGPA", back_populates="student",
+        order_by="SemesterGPA.recorded_at.desc()"
+    )
 
     @property
     def full_name(self) -> str:
@@ -176,3 +180,18 @@ class Intervention(Base):
     actioned_at = Column(DateTime(timezone=True), nullable=True)
 
     student = relationship("StudentProfile", back_populates="interventions")
+
+
+# ─── SEMESTER GPA ─────────────────────────────────────────────────────────────
+
+class SemesterGPA(Base):
+    __tablename__ = "semester_gpas"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
+    year = Column(Integer, nullable=False)              # e.g. 2024
+    semester = Column(Integer, nullable=False)          # 1 or 2
+    gpa = Column(Float, nullable=False)                 # 0.0 – 4.0
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    student = relationship("StudentProfile", back_populates="semester_gpas")

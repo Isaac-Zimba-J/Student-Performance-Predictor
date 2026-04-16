@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from db.session import get_db
-from db.models import User, StudentProfile, AttendanceRecord, AssessmentResult, Intervention, Course, Assessment
+from db.models import User, StudentProfile, AttendanceRecord, AssessmentResult, Intervention, Course, Assessment, SemesterGPA
 from api.schemas import (
     AttendanceCreate, AttendanceOut,
     AssessmentResultCreate, AssessmentResultOut,
     InterventionCreate, InterventionUpdate, InterventionOut,
     StudentDashboard, StudentProfileOut,
     CourseOut, AssessmentOut,
+    SemesterGPACreate, SemesterGPAOut,
 )
 from core.auth import get_current_user, require_role
 from datetime import datetime
@@ -302,5 +303,34 @@ def get_interventions(
     return [InterventionOut.model_validate(i) for i in q.order_by(Intervention.created_at.desc()).all()]
 
 
-from fastapi import APIRouter as _APIRouter
-semester_gpa_router = _APIRouter(prefix="/semester-gpa", tags=["Semester GPA"])
+# ─── SEMESTER GPA ─────────────────────────────────────────────────────────────
+
+semester_gpa_router = APIRouter(prefix="/semester-gpa", tags=["Semester GPA"])
+
+
+@semester_gpa_router.post("/", response_model=SemesterGPAOut, status_code=201)
+def record_semester_gpa(
+    data: SemesterGPACreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "lecturer")),
+):
+    """Record a student's GPA for a completed semester."""
+    record = SemesterGPA(**data.model_dump())
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return SemesterGPAOut.model_validate(record)
+
+
+@semester_gpa_router.get("/student/{student_id}", response_model=List[SemesterGPAOut])
+def get_semester_gpas(
+    student_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return (
+        db.query(SemesterGPA)
+        .filter(SemesterGPA.student_id == student_id)
+        .order_by(SemesterGPA.recorded_at.desc())
+        .all()
+    )

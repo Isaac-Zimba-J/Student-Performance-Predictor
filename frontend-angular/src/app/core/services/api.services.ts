@@ -5,6 +5,7 @@ import {
   PredictionOut, PredictionHistoryPoint, RiskSummary, StudentProfile, StudentDashboard,
   AttendanceCreate, AttendanceOut, InterventionCreate, InterventionOut,
   CourseOut, AssessmentResultCreate, AssessmentResultOut,
+  SemesterGPACreate, SemesterGPAOut,
 } from '../models';
 import { environment } from '../../../environments/environment';
 
@@ -115,5 +116,19 @@ export class InterventionService {
       is_actioned: true,
       outcome_note: outcomeNote,
     });
+  }
+}
+
+// ── Semester GPA Service ──────────────────────────────────────
+@Injectable({ providedIn: 'root' })
+export class SemesterGPAService {
+  constructor(private http: HttpClient) {}
+
+  record(data: SemesterGPACreate): Observable<SemesterGPAOut> {
+    return this.http.post<SemesterGPAOut>(`${API}/semester-gpa/`, data);
+  }
+
+  getForStudent(studentId: string): Observable<SemesterGPAOut[]> {
+    return this.http.get<SemesterGPAOut[]>(`${API}/semester-gpa/student/${studentId}`);
   }
 }

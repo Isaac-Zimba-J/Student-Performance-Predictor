@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional
 from sqlalchemy.orm import Session, joinedload
-from db.models import StudentProfile, AttendanceRecord, AssessmentResult, RiskLevel
+from db.models import StudentProfile, AttendanceRecord, AssessmentResult, RiskLevel, SemesterGPA
 
 try:
     import xgboost as xgb
@@ -66,6 +66,17 @@ SES_MAP = {"low": 0, "middle": 1, "high": 2}
 RISK_MAP = {0: RiskLevel.LOW, 1: RiskLevel.MEDIUM, 2: RiskLevel.HIGH, 3: RiskLevel.CRITICAL}
 
 
+def _get_prior_gpa(student_id: str, db: Session) -> float:
+    """Return the most recent recorded semester GPA, or 2.5 if none exists."""
+    record = (
+        db.query(SemesterGPA)
+        .filter(SemesterGPA.student_id == student_id)
+        .order_by(SemesterGPA.recorded_at.desc())
+        .first()
+    )
+    return record.gpa if record else 2.5
+
+
 def build_features(student_id: str, db: Session) -> Optional[dict]:
     """Pull all student data from DB and engineer the feature vector."""
     profile: StudentProfile = db.query(StudentProfile).filter(
@@ -117,7 +128,7 @@ def build_features(student_id: str, db: Session) -> Optional[dict]:
         "lms_engagement_rate": round(lms_engagement_rate, 4),
         "assignment_submission_rate": round(assignment_submission_rate, 4),
         "avg_assessment_score": round(avg_score, 4),
-        "gpa_prior": 2.5,  # placeholder — load from historical table when available
+        "gpa_prior": _get_prior_gpa(student_id, db),
         "year_of_study": profile.year_of_study,
         "ses_encoded": ses_encoded,
         "is_scholarship": int(profile.is_scholarship),

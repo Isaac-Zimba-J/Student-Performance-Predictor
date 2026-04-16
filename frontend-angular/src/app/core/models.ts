@@ -151,6 +151,22 @@ export interface InterventionOut {
   actioned_at: string | null;
 }
 
+// ── Semester GPA ──────────────────────────────────────────────
+export interface SemesterGPACreate {
+  student_id: string;
+  semester: number;
+  year: number;
+  gpa: number;
+}
+
+export interface SemesterGPAOut {
+  id: string;
+  student_id: string;
+  semester: number;
+  year: number;
+  gpa: number;
+}
+
 // ── Dashboard ─────────────────────────────────────────────────
 export interface StudentDashboard {
   profile: StudentProfile;
