@@ -295,7 +295,7 @@ export class StudentDetailComponent implements OnInit {
   loadPrediction() {
     this.loadingPred = true;
     this.predService.getStudentPrediction(this.studentId).subscribe({
-      next: p => { this.prediction = p; this.loadingPred = false; this.loadHistory(); },
+      next: p => { this.prediction = p; this.loadingPred = false; },
       error: () => { this.predError = 'Not enough data to generate prediction yet.'; this.loadingPred = false; },
     });
   }
