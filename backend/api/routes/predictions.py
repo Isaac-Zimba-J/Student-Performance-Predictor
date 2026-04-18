@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
 from db.session import get_db
@@ -74,6 +74,8 @@ def my_prediction(
 @router.get("/student/{student_id}/history", response_model=list[PredictionHistoryPoint])
 def get_prediction_history(
     student_id: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -88,6 +90,8 @@ def get_prediction_history(
         db.query(RiskPrediction)
         .filter(RiskPrediction.student_id == student_id)
         .order_by(RiskPrediction.created_at.asc())
+        .offset(skip)
+        .limit(limit)
         .all()
     )
     return [PredictionHistoryPoint.model_validate(r) for r in records]
