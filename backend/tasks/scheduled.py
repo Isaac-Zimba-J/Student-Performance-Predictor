@@ -8,7 +8,7 @@ Scheduled background tasks:
 import logging
 from tasks.celery_app import celery_app
 from db.session import SessionLocal
-from db.models import StudentProfile, RiskPrediction, RiskLevel, User, UserRole
+from db.models import StudentProfile, RiskPrediction, RiskLevel, User, UserRole, SemesterGPA
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +57,11 @@ def run_all_predictions(self):
 
 @celery_app.task(bind=True, name="tasks.scheduled.retrain_models", max_retries=1)
 def retrain_models(self):
-    """Retrain XGBoost and GPA models from the latest labelled data."""
+    """
+    Retrain XGBoost and GPA models from labelled data.
+    Uses real SemesterGPA records as the final_gpa label.
+    Skips training if fewer than 10 students have real GPA records.
+    """
     import pandas as pd
     from ml.predictor import build_features, train_models, FEATURE_NAMES
 
@@ -72,6 +76,16 @@ def retrain_models(self):
             if not features:
                 continue
 
+            # Only use students with a real recorded semester GPA
+            real_gpa = (
+                db.query(SemesterGPA)
+                .filter(SemesterGPA.student_id == profile.id)
+                .order_by(SemesterGPA.recorded_at.desc())
+                .first()
+            )
+            if not real_gpa:
+                continue
+
             latest_pred = (
                 db.query(RiskPrediction)
                 .filter(RiskPrediction.student_id == profile.id)
@@ -82,11 +96,14 @@ def retrain_models(self):
                 continue
 
             features["risk_label"] = risk_label_map.get(latest_pred.risk_level.value, 1)
-            features["final_gpa"] = latest_pred.predicted_gpa or 2.5
+            features["final_gpa"] = real_gpa.gpa
             records.append(features)
 
         if len(records) < 10:
-            log.info(f"Skipping retrain — only {len(records)} labelled records (need 10+)")
+            log.info(
+                f"Skipping retrain — only {len(records)} students have real GPA labels "
+                f"(need 10+). Record semester GPAs via the API to enable model training."
+            )
             return {"skipped": True, "records": len(records)}
 
         df = pd.DataFrame(records)
