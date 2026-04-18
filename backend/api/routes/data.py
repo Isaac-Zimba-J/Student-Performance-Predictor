@@ -8,7 +8,7 @@ from api.schemas import (
     AssessmentResultCreate, AssessmentResultOut,
     InterventionCreate, InterventionUpdate, InterventionOut,
     StudentDashboard, StudentProfileOut,
-    CourseOut, AssessmentOut,
+    CourseOut, AssessmentOut, CourseCreate,
     SemesterGPACreate, SemesterGPAOut,
 )
 from core.auth import get_current_user, require_role
@@ -31,6 +31,32 @@ def list_courses(
         out.assessments = [AssessmentOut.model_validate(a) for a in c.assessments]
         result.append(out)
     return result
+
+
+@courses_router.post("/", response_model=CourseOut, status_code=201)
+def create_course(
+    data: CourseCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "lecturer")),
+):
+    """Create a new course. Course code must be unique."""
+    existing = db.query(Course).filter(Course.code == data.course_code).first()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Course code '{data.course_code}' already exists")
+    course = Course(
+        code=data.course_code,
+        name=data.course_name,
+        credits=data.credits,
+        semester=data.semester,
+        academic_year=str(data.year),
+        lecturer_id=data.lecturer_id,
+    )
+    db.add(course)
+    db.commit()
+    db.refresh(course)
+    out = CourseOut.model_validate(course)
+    out.assessments = []
+    return out
 
 
 @courses_router.get("/{course_id}/assessments", response_model=List[AssessmentOut])

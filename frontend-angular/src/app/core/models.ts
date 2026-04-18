@@ -113,6 +113,15 @@ export interface CourseOut {
   assessments: AssessmentOut[];
 }
 
+export interface CourseCreate {
+  course_code: string;
+  course_name: string;
+  credits: number;
+  semester: number;
+  year: number;
+  lecturer_id?: string;
+}
+
 export interface AssessmentResultCreate {
   student_id: string;
   assessment_id: string;

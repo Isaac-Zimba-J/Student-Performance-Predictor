@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import {
   PredictionOut, PredictionHistoryPoint, RiskSummary, StudentProfile, StudentDashboard,
   AttendanceCreate, AttendanceOut, InterventionCreate, InterventionOut,
-  CourseOut, AssessmentResultCreate, AssessmentResultOut,
+  CourseOut, CourseCreate, AssessmentResultCreate, AssessmentResultOut,
   SemesterGPACreate, SemesterGPAOut,
 } from '../models';
 import { environment } from '../../../environments/environment';
@@ -79,6 +79,10 @@ export class CourseService {
 
   getAll(): Observable<CourseOut[]> {
     return this.http.get<CourseOut[]>(`${API}/courses/`);
+  }
+
+  create(data: CourseCreate): Observable<CourseOut> {
+    return this.http.post<CourseOut>(`${API}/courses/`, data);
   }
 }
 

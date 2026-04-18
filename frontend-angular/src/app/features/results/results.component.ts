@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CourseService, ResultsService, StudentService } from '../../core/services/api.services';
-import { CourseOut, AssessmentOut, StudentProfile, AssessmentResultOut } from '../../core/models';
+import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResultOut } from '../../core/models';
 
 @Component({
   selector: 'app-results',
@@ -131,7 +131,51 @@ import { CourseOut, AssessmentOut, StudentProfile, AssessmentResultOut } from '.
 
     <!-- Course overview table -->
     <div class="card" style="margin-top:20px">
-      <div class="card-title">Courses &amp; assessments</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div class="card-title" style="margin:0">Courses &amp; assessments</div>
+        <button class="btn-sm primary" (click)="showCourseForm = !showCourseForm">+ Add course</button>
+      </div>
+      <div *ngIf="courseSuccess" style="color:var(--green);font-size:13px;margin-bottom:12px">✓ Course created successfully</div>
+
+      <!-- Course creation form -->
+      <div *ngIf="showCourseForm" style="margin-bottom:20px;padding:16px;border:1px solid var(--border);border-radius:8px">
+        <div class="card-title">New course</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Course code</label>
+            <input type="text" [(ngModel)]="newCourse.course_code" placeholder="CS401">
+          </div>
+          <div class="form-group">
+            <label>Course name</label>
+            <input type="text" [(ngModel)]="newCourse.course_name" placeholder="Algorithms">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Credits</label>
+            <input type="number" [(ngModel)]="newCourse.credits" min="1" max="6">
+          </div>
+          <div class="form-group">
+            <label>Semester</label>
+            <select [(ngModel)]="newCourse.semester">
+              <option [ngValue]="1">Semester 1</option>
+              <option [ngValue]="2">Semester 2</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Academic year</label>
+            <input type="number" [(ngModel)]="newCourse.year" placeholder="2024">
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <button class="btn-sm primary" (click)="saveCourse()" [disabled]="savingCourse">
+            {{ savingCourse ? 'Saving...' : 'Create course' }}
+          </button>
+          <button class="btn-sm secondary" (click)="showCourseForm = false">Cancel</button>
+          <span *ngIf="courseError" style="color:var(--red);font-size:13px">{{ courseError }}</span>
+        </div>
+      </div>
+
       <div *ngIf="loadingCourses" class="empty-state"><div class="spinner"></div></div>
       <table class="student-table" *ngIf="!loadingCourses">
         <thead>
@@ -179,11 +223,42 @@ export class ResultsComponent implements OnInit {
   loadingCourses = true;
   loadingResults = false;
 
+  showCourseForm = false;
+  savingCourse = false;
+  courseSuccess = false;
+  courseError = '';
+  newCourse: CourseCreate = {
+    course_code: '', course_name: '', credits: 3, semester: 1,
+    year: new Date().getFullYear(),
+  };
+
   constructor(
     private courseService: CourseService,
     private resultsService: ResultsService,
     private studentService: StudentService,
   ) {}
+
+  saveCourse() {
+    if (!this.newCourse.course_code || !this.newCourse.course_name) return;
+    this.savingCourse = true; this.courseError = '';
+    this.courseService.create(this.newCourse).subscribe({
+      next: course => {
+        this.courses = [...this.courses, course];
+        this.savingCourse = false;
+        this.courseSuccess = true;
+        this.showCourseForm = false;
+        this.newCourse = {
+          course_code: '', course_name: '', credits: 3, semester: 1,
+          year: new Date().getFullYear(),
+        };
+        setTimeout(() => this.courseSuccess = false, 3000);
+      },
+      error: e => {
+        this.savingCourse = false;
+        this.courseError = e.error?.detail || 'Failed to create course';
+      },
+    });
+  }
 
   ngOnInit() {
     this.courseService.getAll().subscribe({
