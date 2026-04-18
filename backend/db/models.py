@@ -69,8 +69,7 @@ class StudentProfile(Base):
     risk_predictions = relationship("RiskPrediction", back_populates="student")
     interventions = relationship("Intervention", back_populates="student")
     semester_gpas = relationship(
-        "SemesterGPA", back_populates="student",
-        order_by="SemesterGPA.recorded_at.desc()"
+        "SemesterGPA", back_populates="student"
     )
 
     @property
