@@ -104,12 +104,14 @@ def retrain_models(self):
 @celery_app.task(name="tasks.scheduled.send_risk_alerts")
 def send_risk_alerts():
     """
-    Collect all CRITICAL and HIGH risk students and log alerts.
-    In production: replace log.warning() with email/SMS via SendGrid/Twilio.
+    Collect all CRITICAL and HIGH risk students and notify lecturers.
+    Set EMAIL_ENABLED=true and configure SMTP in .env to send real emails.
+    Without SMTP config, alerts are logged at WARNING level.
     """
+    from core.notifications import send_email
+
     db = SessionLocal()
     try:
-        # Get the latest prediction per student
         all_preds = (
             db.query(RiskPrediction)
             .order_by(RiskPrediction.student_id, RiskPrediction.created_at.desc())
@@ -127,30 +129,35 @@ def send_risk_alerts():
             log.info("No at-risk students to alert.")
             return {"alerts_sent": 0}
 
-        # Get all lecturers to notify
-        lecturers = db.query(User).filter(User.role == UserRole.LECTURER, User.is_active == True).all()
+        lecturers = db.query(User).filter(
+            User.role == UserRole.LECTURER, User.is_active == True
+        ).all()
 
+        sent = 0
         for lecturer in lecturers:
             student_lines = []
             for p in at_risk:
-                profile = db.query(StudentProfile).filter(StudentProfile.id == p.student_id).first()
+                profile = db.query(StudentProfile).filter(
+                    StudentProfile.id == p.student_id
+                ).first()
                 if profile:
                     student_lines.append(
                         f"  - {profile.student_number} ({profile.programme}) "
-                        f"→ {p.risk_level.value.upper()} (score: {round(p.risk_score*100)}%)"
+                        f"→ {p.risk_level.value.upper()} (score: {round(p.risk_score * 100)}%)"
                     )
 
-            alert_body = (
-                f"Weekly Risk Alert — AcademIQ\n\n"
+            subject = f"AcademIQ Weekly Risk Alert — {len(at_risk)} student(s) need attention"
+            body = (
                 f"Dear {lecturer.full_name},\n\n"
                 f"{len(at_risk)} student(s) currently require your attention:\n"
                 + "\n".join(student_lines)
                 + "\n\nPlease log in to AcademIQ to review and create interventions."
             )
-            # TODO: replace with real email/SMS delivery
-            log.warning(f"[ALERT → {lecturer.email}]\n{alert_body}")
 
-        return {"alerts_sent": len(lecturers), "at_risk_students": len(at_risk)}
+            if send_email(lecturer.email, subject, body):
+                sent += 1
+
+        return {"alerts_sent": sent, "at_risk_students": len(at_risk)}
 
     finally:
         db.close()
