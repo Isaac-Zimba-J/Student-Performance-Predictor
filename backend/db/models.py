@@ -40,7 +40,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
-    role = Column(SAEnum(UserRole, native_enum=False), nullable=False, default=UserRole.STUDENT)
+    role = Column(SAEnum(UserRole, native_enum=False, values_callable=lambda x: [e.value for e in x]), nullable=False, default=UserRole.STUDENT)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -57,7 +57,7 @@ class StudentProfile(Base):
     student_number = Column(String, unique=True, nullable=False, index=True)
     programme = Column(String, nullable=False)
     year_of_study = Column(Integer, nullable=False)
-    ses_status = Column(SAEnum(SESStatus, native_enum=False), default=SESStatus.MIDDLE)
+    ses_status = Column(SAEnum(SESStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]), default=SESStatus.MIDDLE)
     is_scholarship = Column(Boolean, default=False)
     is_employed_part_time = Column(Boolean, default=False)
     distance_from_campus_km = Column(Float, default=0.0)
@@ -153,7 +153,7 @@ class RiskPrediction(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
-    risk_level = Column(SAEnum(RiskLevel, native_enum=False), nullable=False)
+    risk_level = Column(SAEnum(RiskLevel, native_enum=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     risk_score = Column(Float, nullable=False)          # 0.0 – 1.0
     predicted_gpa = Column(Float, nullable=True)
     top_risk_factors = Column(Text, nullable=True)      # JSON string of SHAP values
