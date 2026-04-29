@@ -47,7 +47,7 @@ def make_student(user, number, programme, year, ses, scholarship=False, employed
     return p
 
 
-print("Creating users...")
+print("Creating users.")
 
 admin = make_user("admin@uni.ac.zm", "Dr. Admin", UserRole.ADMIN)
 lec1 = make_user("shumba@uni.ac.zm", "Mr. L. Shumba", UserRole.LECTURER)
