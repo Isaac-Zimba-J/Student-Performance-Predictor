@@ -38,14 +38,14 @@ and a detailed explanation of how the ML prediction algorithms work.
 
 ### Demo accounts (all use password `password123`)
 
-| Email | Role | What you can access |
-|---|---|---|
-| `admin@uni.ac.zm` | Admin | Everything |
-| `shumba@uni.ac.zm` | Lecturer | Students, attendance, results, interventions |
-| `banda@uni.ac.zm` | Lecturer | Students, attendance, results, interventions |
-| `student1@uni.ac.zm` | Student | Own dashboard and prediction only |
-| `student2@uni.ac.zm` | Student | Own dashboard and prediction only |
-| `student3@uni.ac.zm` … `student10@uni.ac.zm` | Student | Own dashboard and prediction only |
+| Email                                        | Role     | What you can access                          |
+| -------------------------------------------- | -------- | -------------------------------------------- |
+| `admin@uni.ac.zm`                            | Admin    | Everything                                   |
+| `shumba@uni.ac.zm`                           | Lecturer | Students, attendance, results, interventions |
+| `banda@uni.ac.zm`                            | Lecturer | Students, attendance, results, interventions |
+| `student1@uni.ac.zm`                         | Student  | Own dashboard and prediction only            |
+| `student2@uni.ac.zm`                         | Student  | Own dashboard and prediction only            |
+| `student3@uni.ac.zm` … `student10@uni.ac.zm` | Student  | Own dashboard and prediction only            |
 
 ### How to authenticate in Swagger UI
 
@@ -69,13 +69,16 @@ All subsequent requests will now be sent as that user.
 **Endpoint:** `POST /api/auth/login`
 
 **Test — valid credentials:**
+
 ```json
 {
   "email": "admin@uni.ac.zm",
   "password": "password123"
 }
 ```
+
 **Expected response (200):**
+
 ```json
 {
   "access_token": "eyJ...",
@@ -87,21 +90,25 @@ All subsequent requests will now be sent as that user.
 ```
 
 **Test — wrong password:**
+
 ```json
 {
   "email": "admin@uni.ac.zm",
   "password": "wrongpassword"
 }
 ```
+
 **Expected response (401):** `"Invalid email or password"`
 
 **Test — non-existent email:**
+
 ```json
 {
   "email": "nobody@uni.ac.zm",
   "password": "password123"
 }
 ```
+
 **Expected response (401):** `"Invalid email or password"`
 
 ---
@@ -118,6 +125,7 @@ All subsequent requests will now be sent as that user.
   "role": "lecturer"
 }
 ```
+
 **Expected (201):** Returns the new user object without the password.
 
 **Test — duplicate email:**  
@@ -146,6 +154,7 @@ This creates a `User` and a `StudentProfile` in one request.
   "distance_from_campus_km": 10.0
 }
 ```
+
 **Expected (201):** Returns the user object. The role is automatically set to `student`.
 
 ---
@@ -167,21 +176,21 @@ The system enforces three roles. Test that each boundary is respected.
 
 Log in as `student1@uni.ac.zm` and try the following — all should be **denied (403)**:
 
-| Endpoint | Why it should be denied |
-|---|---|
-| `GET /api/students/` | Students cannot list all students |
+| Endpoint                                              | Why it should be denied                    |
+| ----------------------------------------------------- | ------------------------------------------ |
+| `GET /api/students/`                                  | Students cannot list all students          |
 | `GET /api/predictions/student/{any_other_student_id}` | Students can only see their own prediction |
-| `POST /api/attendance/` | Only lecturers/admins record attendance |
-| `POST /api/results/` | Only lecturers/admins record results |
-| `POST /api/predictions/train` | Admin only |
+| `POST /api/attendance/`                               | Only lecturers/admins record attendance    |
+| `POST /api/results/`                                  | Only lecturers/admins record results       |
+| `POST /api/predictions/train`                         | Admin only                                 |
 
 Endpoints students **can** access:
 
-| Endpoint | Expected |
-|---|---|
-| `GET /api/auth/me` | Own user details |
-| `GET /api/predictions/my` | Own risk prediction |
-| `GET /api/students/me/dashboard` | Own dashboard |
+| Endpoint                         | Expected            |
+| -------------------------------- | ------------------- |
+| `GET /api/auth/me`               | Own user details    |
+| `GET /api/predictions/my`        | Own risk prediction |
+| `GET /api/students/me/dashboard` | Own dashboard       |
 
 ### Lecturer access restrictions
 
@@ -203,6 +212,7 @@ Log in as `shumba@uni.ac.zm` and confirm:
 **Expected (200):** Array of student profiles including name, student number, programme, year of study, and SES status.
 
 **Test filters:**
+
 - `GET /api/students/?programme=Computer+Science` — returns only CS students
 - `GET /api/students/?year=3` — returns only year 3 students
 - `GET /api/students/?skip=0&limit=5` — first 5 students only
@@ -215,6 +225,7 @@ Log in as `shumba@uni.ac.zm` and confirm:
 **Auth required:** Admin or Lecturer
 
 The dashboard bundles four things in one response:
+
 1. Student profile
 2. Current risk prediction (auto-generated)
 3. Attendance summary
@@ -249,6 +260,7 @@ Log in as `student1@uni.ac.zm` and call `GET /api/students/me/dashboard`.
   "lecturer_id": null
 }
 ```
+
 **Expected (201):** Course object with the generated `id`.
 
 **Test — duplicate course code:**  
@@ -286,6 +298,7 @@ First get a `student_id` from `GET /api/students/` and a `course_id` from `GET /
   "assignment_submissions": 1
 }
 ```
+
 **Expected (201):** Attendance record with a computed `attendance_rate` (0.0–1.0).
 
 **Effect on prediction:** Once attendance is recorded, the next prediction run for that student will use the updated attendance rate.
@@ -299,6 +312,7 @@ First get a `student_id` from `GET /api/students/` and a `course_id` from `GET /
 **Expected (200):** All attendance records for that student, ordered by week number, each with an `attendance_rate`.
 
 **What to look for:**
+
 - Students with mostly `1.0` rates → expected Low risk
 - Students with rates below `0.5` → expected Critical risk (like student2 — Chanda Mwansa)
 
@@ -321,9 +335,11 @@ First get an `assessment_id` from `GET /api/courses/{course_id}/assessments`.
   "submitted_on_time": true
 }
 ```
+
 **Expected (201):** Result with a computed `percentage` based on the assessment's `max_marks`.
 
 **Test — missing assessment (marks_obtained null):**
+
 ```json
 {
   "student_id": "<id>",
@@ -332,6 +348,7 @@ First get an `assessment_id` from `GET /api/courses/{course_id}/assessments`.
   "submitted_on_time": false
 }
 ```
+
 **Expected (201):** Created with `percentage` as null. This increments `assessments_missed` in the next prediction.
 
 ---
@@ -359,6 +376,7 @@ First get an `assessment_id` from `GET /api/courses/{course_id}/assessments`.
   "gpa": 3.2
 }
 ```
+
 **Expected (201):** GPA record.
 
 **Why this matters:** The `gpa_prior` feature used in predictions is pulled from the most recent `SemesterGPA` record. Without any recorded GPA, the system defaults to `2.5`. Recording real GPAs improves prediction accuracy and is also required before model retraining can run.
@@ -383,6 +401,7 @@ This is the core feature of the system.
 **Auth required:** Any authenticated user (students can only call it for themselves)
 
 **Expected (200):**
+
 ```json
 {
   "student_id": "...",
@@ -395,9 +414,7 @@ This is the core feature of the system.
     { "factor": "Class attendance", "impact": 0.08, "value": "0.92" },
     { "factor": "Assessment performance", "impact": 0.05, "value": "85.3" }
   ],
-  "recommendations": [
-    "You are on track — keep up the good attendance..."
-  ],
+  "recommendations": ["You are on track — keep up the good attendance..."],
   "model_version": "v1",
   "predicted_at": "2025-..."
 }
@@ -405,13 +422,13 @@ This is the core feature of the system.
 
 **Test with different students to see different risk levels:**
 
-| Student | Email | Expected risk |
-|---|---|---|
-| Emeldah Miyanda | student1@uni.ac.zm | Low |
-| Chanda Mwansa | student2@uni.ac.zm | Critical (45% attendance, 25–45% scores) |
-| Bupe Mutale | student4@uni.ac.zm | High (58% attendance, 35–55% scores) |
-| Chilufya Bwalya | student6@uni.ac.zm | Critical (40% attendance, 20–40% scores) |
-| Mutinta Hakasenke | student7@uni.ac.zm | Low (95% attendance, 80–98% scores) |
+| Student           | Email              | Expected risk                            |
+| ----------------- | ------------------ | ---------------------------------------- |
+| Emeldah Miyanda   | student1@uni.ac.zm | Low                                      |
+| Chanda Mwansa     | student2@uni.ac.zm | Critical (45% attendance, 25–45% scores) |
+| Bupe Mutale       | student4@uni.ac.zm | High (58% attendance, 35–55% scores)     |
+| Chilufya Bwalya   | student6@uni.ac.zm | Critical (40% attendance, 20–40% scores) |
+| Mutinta Hakasenke | student7@uni.ac.zm | Low (95% attendance, 80–98% scores)      |
 
 ---
 
@@ -431,6 +448,7 @@ Log in as any student and call this. No student ID needed — the API resolves i
 Every time a prediction is run, it is stored. This endpoint returns all past predictions in chronological order.
 
 **Test pagination:**
+
 - `?skip=0&limit=5` — first 5
 - `?skip=5&limit=5` — next 5
 
@@ -444,6 +462,7 @@ Every time a prediction is run, it is stored. This endpoint returns all past pre
 **Auth required:** Admin or Lecturer
 
 **Expected (200):**
+
 ```json
 {
   "total_students": 10,
@@ -466,17 +485,24 @@ This uses the **latest prediction per student** — each student is counted once
 
 **Expected — not enough data (202 or 400):**  
 If fewer than 10 students have a recorded `SemesterGPA`, the response will be:
+
 ```json
 { "detail": "Need at least 10 labelled student records to train. Have X." }
 ```
 
 **To enable training:**
+
 1. Record a `SemesterGPA` for at least 10 students via `POST /api/semester-gpa/`
 2. Call `POST /api/predictions/train` again
 
 **Expected after training:**
+
 ```json
-{ "message": "Model retrained successfully", "status": "trained", "samples": 10 }
+{
+  "message": "Model retrained successfully",
+  "status": "trained",
+  "samples": 10
+}
 ```
 
 After training, the saved model files appear in `backend/ml/saved_models/` and all subsequent predictions use XGBoost instead of the rule-based fallback.
@@ -515,6 +541,7 @@ After training, the saved model files appear in `backend/ml/saved_models/` and a
   "outcome_note": "Student attended 3 tutoring sessions. Attendance improved to 75%."
 }
 ```
+
 **Expected (200):** Updated intervention with `is_actioned: true` and `actioned_at` timestamp set.
 
 ---
@@ -534,11 +561,11 @@ These run on a schedule when the Celery worker and beat are running. They can al
 
 ### Scheduled tasks
 
-| Task | Schedule | What it does |
-|---|---|---|
-| `run_all_predictions` | Every night at 2:00 AM | Runs a risk prediction for every student and saves the result |
-| `retrain_models` | Every Sunday at 3:00 AM | Retrains XGBoost and GPA models if 10+ students have real GPA records |
-| `send_risk_alerts` | Every Monday at 8:00 AM | Emails all lecturers a list of HIGH and CRITICAL risk students |
+| Task                  | Schedule                | What it does                                                          |
+| --------------------- | ----------------------- | --------------------------------------------------------------------- |
+| `run_all_predictions` | Every night at 2:00 AM  | Runs a risk prediction for every student and saves the result         |
+| `retrain_models`      | Every Sunday at 3:00 AM | Retrains XGBoost and GPA models if 10+ students have real GPA records |
+| `send_risk_alerts`    | Every Monday at 8:00 AM | Emails all lecturers a list of HIGH and CRITICAL risk students        |
 
 ### How to test manually
 
@@ -560,17 +587,20 @@ send_risk_alerts()
 ```
 
 **Expected from `run_all_predictions`:**
+
 ```python
 {'updated': 10, 'failed': 0}
 ```
 
 **Expected from `retrain_models` before any GPAs are recorded:**
+
 ```python
 {'skipped': True, 'records': 0}
 ```
 
 **Expected from `send_risk_alerts` with `EMAIL_ENABLED=false`:**  
 Alerts are logged to the console instead of sent. Check the terminal running the worker for lines like:
+
 ```
 WARNING  [ALERT] High/Critical risk students for lecturer shumba@uni.ac.zm: ...
 ```
@@ -587,20 +617,20 @@ This section explains what happens inside `backend/ml/predictor.py` when a predi
 
 When `GET /api/predictions/student/{id}` is called, the system first queries the database to build a **feature vector** — 12 numbers that describe the student's current academic situation.
 
-| Feature | How it is calculated |
-|---|---|
-| `attendance_rate` | Total classes attended ÷ total classes held across all courses |
-| `lms_engagement_rate` | Total LMS logins ÷ number of weeks tracked |
-| `assignment_submission_rate` | Total assignment submissions ÷ number of weeks tracked |
-| `avg_assessment_score` | Average of (marks_obtained ÷ max_marks × 100) across all submitted assessments |
-| `gpa_prior` | Most recent recorded `SemesterGPA.gpa`, defaults to 2.5 if none exists |
-| `year_of_study` | Taken directly from the student profile |
-| `ses_encoded` | SES status mapped to a number: low=0, middle=1, high=2 |
-| `is_scholarship` | 1 if the student has a scholarship, 0 otherwise |
-| `is_employed` | 1 if employed part-time, 0 otherwise |
-| `distance_km` | Distance from campus in km, from the student profile |
-| `assessments_missed` | Count of assessment results where `marks_obtained` is null |
-| `late_submissions` | Count of results where `submitted_on_time` is false |
+| Feature                      | How it is calculated                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------ |
+| `attendance_rate`            | Total classes attended ÷ total classes held across all courses                 |
+| `lms_engagement_rate`        | Total LMS logins ÷ number of weeks tracked                                     |
+| `assignment_submission_rate` | Total assignment submissions ÷ number of weeks tracked                         |
+| `avg_assessment_score`       | Average of (marks_obtained ÷ max_marks × 100) across all submitted assessments |
+| `gpa_prior`                  | Most recent recorded `SemesterGPA.gpa`, defaults to 2.5 if none exists         |
+| `year_of_study`              | Taken directly from the student profile                                        |
+| `ses_encoded`                | SES status mapped to a number: low=0, middle=1, high=2                         |
+| `is_scholarship`             | 1 if the student has a scholarship, 0 otherwise                                |
+| `is_employed`                | 1 if employed part-time, 0 otherwise                                           |
+| `distance_km`                | Distance from campus in km, from the student profile                           |
+| `assessments_missed`         | Count of assessment results where `marks_obtained` is null                     |
+| `late_submissions`           | Count of results where `submitted_on_time` is false                            |
 
 A student with no attendance records will have `attendance_rate = 1.0` (the formula defaults the denominator to 1 to avoid division by zero). A student with no assessment results will have `avg_assessment_score = 50.0`.
 
@@ -641,6 +671,7 @@ Final score is clamped to 1.0, then mapped to a risk level:
 ```
 
 **Example — Chanda Mwansa (student2):**
+
 - Attendance 45% → +0.40
 - Avg score ~35% → +0.35
 - SES low → +0.10
@@ -648,6 +679,7 @@ Final score is clamped to 1.0, then mapped to a risk level:
 - Total ≈ 0.90 → **CRITICAL**
 
 **Example — Emeldah Miyanda (student1):**
+
 - Attendance 92% → +0.00
 - Avg score ~85% → +0.00
 - SES middle → +0.00
@@ -660,6 +692,7 @@ Final score is clamped to 1.0, then mapped to a risk level:
 Once `POST /api/predictions/train` is called with 10+ labelled students, the system trains an XGBoost multi-class classifier.
 
 **Model configuration:**
+
 - 200 decision trees
 - Max tree depth of 5
 - Learning rate of 0.05
@@ -681,6 +714,7 @@ SHAP assigns each feature an **impact value** — a number that represents how m
 The top 5 factors by absolute impact are returned in the `risk_factors` array and shown on the student's prediction screen.
 
 **Example output:**
+
 ```json
 [
   { "factor": "Class attendance", "impact": -0.42, "value": "0.92" },
@@ -688,6 +722,7 @@ The top 5 factors by absolute impact are returned in the `risk_factors` array an
   { "factor": "Prior academic record", "impact": -0.18, "value": "3.2" }
 ]
 ```
+
 Negative values here mean those features are pulling the risk level **down** (the student is doing well). For a high-risk student the attendance and score impacts would be positive instead.
 
 ---
@@ -696,8 +731,9 @@ Negative values here mean those features are pulling the risk level **down** (th
 
 If the GPA regressor model exists (`backend/ml/saved_models/gpa_regressor.pkl`), it is loaded and run on the same 12-feature vector to produce a `predicted_gpa` value between 0.0 and 4.0.
 
-**Model:** Gradient Boosting Regressor  
-- 150 trees, max depth 4, learning rate 0.08  
+**Model:** Gradient Boosting Regressor
+
+- 150 trees, max depth 4, learning rate 0.08
 - Trained on the same feature vectors using real `SemesterGPA.gpa` values as labels
 
 Until the model is trained, `predicted_gpa` is returned as `null`.
@@ -708,15 +744,15 @@ Until the model is trained, `predicted_gpa` is returned as `null`.
 
 The `generate_recommendations` function reads the feature values and risk level and produces plain-English recommendations:
 
-| Condition | Recommendation shown |
-|---|---|
-| `attendance_rate < 0.75` | Attendance warning with current percentage |
-| `avg_assessment_score < 55` | Tutoring / academic support suggestion |
-| `assessments_missed > 1` | Contact lecturer for make-up opportunities |
-| `lms_engagement_rate < 2` | Reminder to log in to the online platform |
-| `is_employed AND attendance < 0.8` | Time management / counselling suggestion |
-| Risk is HIGH or CRITICAL | Urgent prompt to see academic advisor |
-| None of the above triggered | Positive reinforcement message |
+| Condition                          | Recommendation shown                       |
+| ---------------------------------- | ------------------------------------------ |
+| `attendance_rate < 0.75`           | Attendance warning with current percentage |
+| `avg_assessment_score < 55`        | Tutoring / academic support suggestion     |
+| `assessments_missed > 1`           | Contact lecturer for make-up opportunities |
+| `lms_engagement_rate < 2`          | Reminder to log in to the online platform  |
+| `is_employed AND attendance < 0.8` | Time management / counselling suggestion   |
+| Risk is HIGH or CRITICAL           | Urgent prompt to see academic advisor      |
+| None of the above triggered        | Positive reinforcement message             |
 
 ---
 

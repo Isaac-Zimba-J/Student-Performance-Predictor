@@ -10,15 +10,15 @@
 
 ## System Overview
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Frontend | Angular 17 | Student & lecturer portals |
-| API | FastAPI (Python) | REST endpoints, auth, routing |
-| ML Engine | XGBoost + SHAP | Risk classification & explainability |
-| GPA Predictor | Gradient Boosting | End-of-semester GPA forecast |
-| Database | PostgreSQL | Student, attendance, results storage |
-| Cache | Redis | Celery broker for background tasks |
-| Background | Celery | Scheduled model retraining & alerts |
+| Layer         | Technology        | Purpose                              |
+| ------------- | ----------------- | ------------------------------------ |
+| Frontend      | Angular 17        | Student & lecturer portals           |
+| API           | FastAPI (Python)  | REST endpoints, auth, routing        |
+| ML Engine     | XGBoost + SHAP    | Risk classification & explainability |
+| GPA Predictor | Gradient Boosting | End-of-semester GPA forecast         |
+| Database      | PostgreSQL        | Student, attendance, results storage |
+| Cache         | Redis             | Celery broker for background tasks   |
+| Background    | Celery            | Scheduled model retraining & alerts  |
 
 ---
 
@@ -32,9 +32,11 @@ You need four tools installed on your machine before anything else will work.
 - **Windows:** Download the installer from [python.org](https://www.python.org/downloads/). During install, **tick the box that says "Add Python to PATH"** before clicking Install.
 
 Check it works: open a terminal and run:
+
 ```
 python --version
 ```
+
 You should see `Python 3.10.x` or higher.
 
 ---
@@ -45,9 +47,11 @@ You should see `Python 3.10.x` or higher.
 - **Windows:** Download the LTS installer from [nodejs.org](https://nodejs.org)
 
 Check it works:
+
 ```
 node --version
 ```
+
 You should see `v18.x.x` or higher.
 
 ---
@@ -58,6 +62,7 @@ You should see `v18.x.x` or higher.
 - **Windows:** Download the installer from [postgresql.org/download/windows](https://www.postgresql.org/download/windows/). During setup, remember the password you set for the `postgres` user — you will need it later.
 
 Check it works:
+
 ```
 psql --version
 ```
@@ -72,9 +77,11 @@ psql --version
   - **Option B:** Enable WSL (Windows Subsystem for Linux), then run `sudo apt install redis-server` inside WSL.
 
 Check it works:
+
 ```
 redis-cli ping
 ```
+
 You should see `PONG`.
 
 ---
@@ -90,11 +97,13 @@ You will need **two terminal windows** open at the same time — one for the bac
 Open a terminal and run:
 
 **macOS / Linux:**
+
 ```bash
 psql -U postgres -c "CREATE DATABASE student_predictor;"
 ```
 
 **Windows (Command Prompt or PowerShell):**
+
 ```powershell
 psql -U postgres -c "CREATE DATABASE student_predictor;"
 ```
@@ -108,6 +117,7 @@ It will ask for your PostgreSQL password. Type it and press Enter.
 Open your first terminal window.
 
 **macOS / Linux:**
+
 ```bash
 # 1. Go into the backend folder
 cd backend
@@ -126,6 +136,7 @@ cp .env.example .env
 ```
 
 **Windows (Command Prompt):**
+
 ```bat
 :: 1. Go into the backend folder
 cd backend
@@ -144,6 +155,7 @@ copy .env.example .env
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 # 1. Go into the backend folder
 cd backend
@@ -187,6 +199,7 @@ Leave everything else as-is for development.
 Still in the `backend/` folder with the virtual environment active, run:
 
 **macOS / Linux / Windows:**
+
 ```bash
 uvicorn main:app --reload --port 8000
 ```
@@ -194,6 +207,7 @@ uvicorn main:app --reload --port 8000
 The first time this runs it will automatically create all database tables.
 
 You should see output ending with:
+
 ```
 ✅ Database tables ready
 INFO:     Uvicorn running on http://127.0.0.1:8000
@@ -211,6 +225,7 @@ Open **http://localhost:8000/docs** in your browser to see all endpoints.
 Open a **new terminal window** (keep the API running in the first one).
 
 **macOS / Linux:**
+
 ```bash
 cd backend
 source venv/bin/activate
@@ -218,6 +233,7 @@ python seed.py
 ```
 
 **Windows (Command Prompt):**
+
 ```bat
 cd backend
 venv\Scripts\activate
@@ -225,6 +241,7 @@ python seed.py
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 cd backend
 .\venv\Scripts\Activate.ps1
@@ -253,6 +270,7 @@ Demo credentials (password: password123):
 Open another terminal window (the API must still be running).
 
 **macOS / Linux / Windows:**
+
 ```bash
 cd frontend-angular
 npm install
@@ -262,6 +280,7 @@ npm start
 `npm install` only needs to run once. After that you can just use `npm start`.
 
 Wait until you see:
+
 ```
 ** Angular Live Development Server is listening on localhost:4200 **
 ```
@@ -279,18 +298,23 @@ If you want background tasks running, open **two more terminals**, both inside t
 **Terminal A — task worker:**
 
 macOS / Linux:
+
 ```bash
 celery -A tasks.celery_app worker --loglevel=info
 ```
+
 Windows:
+
 ```bat
 celery -A tasks.celery_app worker --loglevel=info --pool=solo
 ```
+
 > Windows requires `--pool=solo` because the default worker pool is not supported there.
 
 **Terminal B — cron scheduler:**
 
 macOS / Linux / Windows:
+
 ```bash
 celery -A tasks.celery_app beat --loglevel=info
 ```
@@ -310,6 +334,7 @@ celery -A tasks.celery_app beat --loglevel=info
 Once everything is installed and configured you only need these commands on subsequent runs:
 
 **macOS / Linux:**
+
 ```bash
 # Terminal 1 — Backend
 cd backend
@@ -322,6 +347,7 @@ npm start
 ```
 
 **Windows (Command Prompt):**
+
 ```bat
 :: Terminal 1 — Backend
 cd backend
@@ -329,11 +355,14 @@ venv\Scripts\activate
 uvicorn main:app --reload --port 8000
 
 :: Terminal 2 — Frontend
-cd frontend-angular
-npm start
+cd backend
+venv\Scripts\activate
+uvicorn main:app --reload --port 8000
+
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 # Terminal 1 — Backend
 cd backend
@@ -351,81 +380,88 @@ npm start
 
 All settings live in `backend/.env`. Full list:
 
-| Variable | What it does | Default |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:yourpassword@127.0.0.1:5432/student_predictor` |
-| `SECRET_KEY` | Signs JWT tokens — keep this secret | `change-this-in-production` |
-| `REDIS_URL` | Redis address for Celery | `redis://localhost:6379/0` |
-| `ALGORITHM` | JWT signing algorithm | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | How long login tokens last | `60` |
-| `EMAIL_ENABLED` | Set to `true` to send real email alerts | `false` |
-| `SMTP_HOST` | Your email provider's SMTP server | _(blank)_ |
-| `SMTP_USER` | SMTP login email | _(blank)_ |
-| `SMTP_PASSWORD` | SMTP app password | _(blank)_ |
+| Variable                      | What it does                            | Default                                                               |
+| ----------------------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`                | PostgreSQL connection string            | `postgresql://postgres:yourpassword@127.0.0.1:5432/student_predictor` |
+| `SECRET_KEY`                  | Signs JWT tokens — keep this secret     | `change-this-in-production`                                           |
+| `REDIS_URL`                   | Redis address for Celery                | `redis://localhost:6379/0`                                            |
+| `ALGORITHM`                   | JWT signing algorithm                   | `HS256`                                                               |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | How long login tokens last              | `60`                                                                  |
+| `EMAIL_ENABLED`               | Set to `true` to send real email alerts | `false`                                                               |
+| `SMTP_HOST`                   | Your email provider's SMTP server       | _(blank)_                                                             |
+| `SMTP_USER`                   | SMTP login email                        | _(blank)_                                                             |
+| `SMTP_PASSWORD`               | SMTP app password                       | _(blank)_                                                             |
 
 ---
 
 ## API Endpoints
 
 ### Auth
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/auth/login` | Login — returns JWT |
-| POST | `/api/auth/register` | Register any user |
-| POST | `/api/auth/register/student` | Register student + profile |
-| GET | `/api/auth/me` | Current user info |
+
+| Method | Path                         | Description                |
+| ------ | ---------------------------- | -------------------------- |
+| POST   | `/api/auth/login`            | Login — returns JWT        |
+| POST   | `/api/auth/register`         | Register any user          |
+| POST   | `/api/auth/register/student` | Register student + profile |
+| GET    | `/api/auth/me`               | Current user info          |
 
 ### Predictions (core feature)
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/predictions/student/{id}` | Run prediction for a student |
-| GET | `/api/predictions/my` | Student views own prediction |
-| GET | `/api/predictions/student/{id}/history` | Past predictions (paginated) |
-| GET | `/api/predictions/risk-summary` | Cohort risk breakdown |
-| POST | `/api/predictions/train` | Admin: retrain ML models |
+
+| Method | Path                                    | Description                  |
+| ------ | --------------------------------------- | ---------------------------- |
+| GET    | `/api/predictions/student/{id}`         | Run prediction for a student |
+| GET    | `/api/predictions/my`                   | Student views own prediction |
+| GET    | `/api/predictions/student/{id}/history` | Past predictions (paginated) |
+| GET    | `/api/predictions/risk-summary`         | Cohort risk breakdown        |
+| POST   | `/api/predictions/train`                | Admin: retrain ML models     |
 
 ### Data
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/students/` | List all students |
-| GET | `/api/students/me/dashboard` | Student's own dashboard |
-| GET | `/api/students/{id}/dashboard` | Lecturer/admin: student dashboard |
-| POST | `/api/attendance/` | Record weekly attendance |
-| GET | `/api/attendance/student/{id}` | Get student attendance history |
-| POST | `/api/results/` | Record assessment result |
-| GET | `/api/results/student/{id}` | Get student results |
-| POST | `/api/interventions/` | Create intervention |
-| PATCH | `/api/interventions/{id}` | Mark intervention actioned |
-| GET | `/api/interventions/student/{id}` | Get student interventions |
-| POST | `/api/courses/` | Create course |
-| GET | `/api/courses/` | List courses |
-| POST | `/api/semester-gpa/` | Record end-of-semester GPA |
-| GET | `/api/semester-gpa/student/{id}` | Get GPA history |
+
+| Method | Path                              | Description                       |
+| ------ | --------------------------------- | --------------------------------- |
+| GET    | `/api/students/`                  | List all students                 |
+| GET    | `/api/students/me/dashboard`      | Student's own dashboard           |
+| GET    | `/api/students/{id}/dashboard`    | Lecturer/admin: student dashboard |
+| POST   | `/api/attendance/`                | Record weekly attendance          |
+| GET    | `/api/attendance/student/{id}`    | Get student attendance history    |
+| POST   | `/api/results/`                   | Record assessment result          |
+| GET    | `/api/results/student/{id}`       | Get student results               |
+| POST   | `/api/interventions/`             | Create intervention               |
+| PATCH  | `/api/interventions/{id}`         | Mark intervention actioned        |
+| GET    | `/api/interventions/student/{id}` | Get student interventions         |
+| POST   | `/api/courses/`                   | Create course                     |
+| GET    | `/api/courses/`                   | List courses                      |
+| POST   | `/api/semester-gpa/`              | Record end-of-semester GPA        |
+| GET    | `/api/semester-gpa/student/{id}`  | Get GPA history                   |
 
 ---
 
 ## ML Model Details
 
 ### Risk Classifier
+
 - **Algorithm:** XGBoost (multi-class)
 - **Output classes:** Low / Medium / High / Critical
 - **Explainability:** SHAP TreeExplainer — top 5 factors shown per prediction
 - **Fallback:** Rule-based heuristic scoring is used until enough training data exists
 
 ### GPA Predictor
+
 - **Algorithm:** Gradient Boosting Regressor (scikit-learn)
 - **Output:** Predicted end-of-semester GPA (0–4 scale)
 
 ### Features Used
-| Feature | Source | Weight (approx.) |
-|---|---|---|
-| Attendance rate | Attendance records | 40% |
-| Average assessment score | Assessment results | 35% |
-| Socioeconomic status | Student profile | 15% |
-| LMS engagement | Attendance records | 5% |
-| Missed assessments | Assessment results | 5% |
+
+| Feature                  | Source             | Weight (approx.) |
+| ------------------------ | ------------------ | ---------------- |
+| Attendance rate          | Attendance records | 40%              |
+| Average assessment score | Assessment results | 35%              |
+| Socioeconomic status     | Student profile    | 15%              |
+| LMS engagement           | Attendance records | 5%               |
+| Missed assessments       | Assessment results | 5%               |
 
 ### Retraining
+
 Models are retrained via `POST /api/predictions/train` (admin only) or the weekly Celery beat task. At least 10 students with recorded `SemesterGPA` entries are required before training will run.
 
 ---
@@ -473,11 +509,11 @@ student-predictor/
 
 ## User Roles
 
-| Role | Access |
-|---|---|
-| **Student** | Own risk prediction, recommendations, dashboard |
+| Role         | Access                                                        |
+| ------------ | ------------------------------------------------------------- |
+| **Student**  | Own risk prediction, recommendations, dashboard               |
 | **Lecturer** | All student predictions, create interventions, record results |
-| **Admin** | Everything + model retraining, system monitoring |
+| **Admin**    | Everything + model retraining, system monitoring              |
 
 ---
 
