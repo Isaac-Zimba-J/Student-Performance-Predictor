@@ -135,7 +135,7 @@ body {
 }
 .page-title { font-family: var(--font-head); font-size: 20px; font-weight: 700; }
 .top-bar-actions { display: flex; align-items: center; gap: 12px; }
-.content { flex: 1; overflow-y: auto; padding: 32px; }
+.content { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 32px; }
 
 /* ── CARDS & STATS ── */
 .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
@@ -264,9 +264,110 @@ body {
 .att-bar.att-bad  { background: var(--red); }
 
 /* ── SCROLL ── */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.16) transparent; }
+
+/* Scrollable region for long lists and wide tables.
+   Height is capped against the viewport so the page keeps its own scroll
+   while the list scrolls independently underneath a pinned header. */
+.scroll-area {
+  overflow-y: auto;
+  overflow-x: auto;
+  max-height: var(--scroll-max, calc(100vh - 320px));
+  min-height: 160px;
+  overscroll-behavior: contain;
+  /* Room so the last row never sits flush against the scrollbar/edge. */
+  padding-right: 2px;
+}
+.scroll-area.short { --scroll-max: 360px; }
+.scroll-area.tall  { --scroll-max: calc(100vh - 240px); }
+
+/* Sticky table header inside a .scroll-area */
+.scroll-area .student-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
+  /* thead borders don't stick with position:sticky, so draw one with a shadow */
+  box-shadow: inset 0 -1px 0 var(--border);
+  border-bottom: none;
+  padding: 12px 0;
+}
+
+/* Cards that host a scroll area should not add their own scrollbar */
+.card.card-flush { display: flex; flex-direction: column; min-height: 0; }
+
+/* ── PAGINATION ── */
+.pager {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--border);
+}
+.pager-info { font-size: 12px; color: var(--muted2); }
+.pager-spacer { margin-left: auto; }
+.pager-btn {
+  min-width: 34px; height: 32px; padding: 0 10px;
+  border-radius: 8px; border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted2); font-size: 13px; font-weight: 600; font-family: var(--font-body);
+  cursor: pointer; transition: all .15s;
+}
+.pager-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+.pager-btn:disabled { opacity: .4; cursor: not-allowed; }
+.pager-btn.active { background: rgba(99,102,241,0.15); border-color: var(--accent); color: var(--accent2); }
+.pager-select {
+  height: 32px; padding: 0 8px; border-radius: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-size: 13px; font-family: var(--font-body); outline: none; cursor: pointer;
+}
+.pager-ellipsis { color: var(--muted); font-size: 13px; padding: 0 2px; }
+
+/* ── SEARCHABLE PICKER (combobox) ── */
+.picker { position: relative; }
+.picker-input {
+  width: 100%; padding: 12px 36px 12px 16px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  color: var(--text); font-size: 14px; font-family: var(--font-body);
+  outline: none; transition: border-color .2s; cursor: text;
+}
+.picker-input:focus { border-color: var(--accent); }
+.picker-input::placeholder { color: var(--muted); }
+.picker-clear {
+  position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 15px; line-height: 1; padding: 4px;
+}
+.picker-clear:hover { color: var(--red); }
+.picker-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 50;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.45);
+  max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding: 4px;
+}
+.picker-option {
+  padding: 9px 12px; border-radius: 7px; cursor: pointer; font-size: 13px;
+  display: flex; flex-direction: column; gap: 2px; transition: background .12s;
+}
+.picker-option:hover, .picker-option.active { background: var(--surface2); }
+.picker-option .opt-main { color: var(--text); font-weight: 500; }
+.picker-option .opt-sub { color: var(--muted2); font-size: 11px; }
+.picker-status { padding: 14px 12px; font-size: 13px; color: var(--muted2); text-align: center; }
+.picker-more {
+  padding: 8px 12px; font-size: 11px; color: var(--muted);
+  border-top: 1px solid var(--border); margin-top: 4px; text-align: center;
+}
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.filter-bar .search-box { flex: 1 1 240px; min-width: 200px; }
+.filter-bar .search-box.compact { flex: 0 0 auto; width: auto; }
 
 /* ── TOAST ── */
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }

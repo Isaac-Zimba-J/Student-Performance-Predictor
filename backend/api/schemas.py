@@ -176,6 +176,21 @@ class InterventionOut(BaseModel):
     actioned_at: Optional[datetime]
 
 
+class LatestPredictionRow(BaseModel):
+    """One row of the paged 'latest prediction per student' listing."""
+    model_config = ConfigDict(from_attributes=True)
+
+    student_id: str
+    student_name: str
+    student_number: str
+    programme: str
+    year_of_study: int
+    risk_level: RiskLevel
+    risk_score: float
+    predicted_gpa: Optional[float] = None
+    predicted_at: datetime
+
+
 # ─── PREDICTION HISTORY ───────────────────────────────────────────────────────
 
 class PredictionHistoryPoint(BaseModel):

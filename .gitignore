@@ -22,9 +22,10 @@ dist/
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE / local tooling
 .vscode/
 .idea/
+.claude/
 *.swp
 
 # Database

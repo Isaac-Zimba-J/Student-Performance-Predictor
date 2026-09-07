@@ -54,7 +54,11 @@ interface NavItem {
             <button class="btn-icon" title="Refresh" (click)="refresh()">↻</button>
           </div>
         </div>
-        <router-outlet></router-outlet>
+        <!-- .content owns the vertical scroll; without this wrapper the
+             overflow:hidden on .app-layout/.main-area clips every page. -->
+        <main class="content">
+          <router-outlet></router-outlet>
+        </main>
       </div>
     </div>
   `,

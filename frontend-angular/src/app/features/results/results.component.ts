@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CourseService, ResultsService, StudentService } from '../../core/services/api.services';
+import { CourseService, ResultsService } from '../../core/services/api.services';
 import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResultOut } from '../../core/models';
+import { StudentPickerComponent } from '../../shared/components/student-picker/student-picker.component';
 
 @Component({
   selector: 'app-results',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StudentPickerComponent],
   template: `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
 
@@ -17,12 +18,10 @@ import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResul
 
         <div class="form-group">
           <label>Student</label>
-          <select [(ngModel)]="form.student_id" (ngModelChange)="onStudentChange()">
-            <option value="">— select student —</option>
-            <option *ngFor="let s of students" [value]="s.id">
-              {{ s.student_number }} — {{ s.programme }} Yr{{ s.year_of_study }}
-            </option>
-          </select>
+          <app-student-picker [studentId]="form.student_id"
+                              (studentIdChange)="onStudentSelected($event)"
+                              (studentChange)="selectedStudent = $event">
+          </app-student-picker>
         </div>
 
         <div class="form-group">
@@ -99,7 +98,8 @@ import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResul
           No results recorded yet.
         </div>
 
-        <table class="student-table" *ngIf="studentResults.length > 0">
+        <div class="scroll-area short" *ngIf="studentResults.length > 0">
+        <table class="student-table">
           <thead>
             <tr>
               <th>Assessment</th>
@@ -126,6 +126,7 @@ import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResul
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </div>
 
@@ -177,7 +178,8 @@ import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResul
       </div>
 
       <div *ngIf="loadingCourses" class="empty-state"><div class="spinner"></div></div>
-      <table class="student-table" *ngIf="!loadingCourses">
+      <div class="scroll-area" *ngIf="!loadingCourses">
+      <table class="student-table">
         <thead>
           <tr>
             <th>Code</th>
@@ -202,12 +204,13 @@ import { CourseOut, CourseCreate, AssessmentOut, StudentProfile, AssessmentResul
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   `,
 })
 export class ResultsComponent implements OnInit {
   courses: CourseOut[] = [];
-  students: StudentProfile[] = [];
+  selectedStudent: StudentProfile | null = null;
   studentResults: AssessmentResultOut[] = [];
 
   selectedCourseId = '';
@@ -235,7 +238,6 @@ export class ResultsComponent implements OnInit {
   constructor(
     private courseService: CourseService,
     private resultsService: ResultsService,
-    private studentService: StudentService,
   ) {}
 
   saveCourse() {
@@ -265,9 +267,6 @@ export class ResultsComponent implements OnInit {
       next: c => { this.courses = c; this.loadingCourses = false; },
       error: () => this.loadingCourses = false,
     });
-    this.studentService.getAll().subscribe({
-      next: s => this.students = s,
-    });
   }
 
   get filteredAssessments(): AssessmentOut[] {
@@ -279,8 +278,7 @@ export class ResultsComponent implements OnInit {
   }
 
   get selectedStudentLabel(): string {
-    const s = this.students.find(s => s.id === this.form.student_id);
-    return s ? `${s.student_number}` : '';
+    return this.selectedStudent?.student_number ?? '';
   }
 
   get canSubmit(): boolean {
@@ -289,6 +287,11 @@ export class ResultsComponent implements OnInit {
 
   onCourseChange() {
     this.form.assessment_id = '';
+  }
+
+  onStudentSelected(studentId: string) {
+    this.form.student_id = studentId;
+    this.onStudentChange();
   }
 
   onStudentChange() {
@@ -322,6 +325,7 @@ export class ResultsComponent implements OnInit {
 
   reset() {
     this.form = { student_id: '', assessment_id: '', submitted_on_time: true };
+    this.selectedStudent = null;
     this.selectedCourseId = '';
     this.marksInput = null;
     this.studentResults = [];

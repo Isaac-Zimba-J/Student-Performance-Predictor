@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from db.session import get_db
@@ -73,21 +74,64 @@ def list_assessments(
 students_router = APIRouter(prefix="/students", tags=["Students"])
 
 
+@students_router.get("/programmes", response_model=List[str])
+def list_programmes(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "lecturer")),
+):
+    """Distinct programme names, for populating filter dropdowns."""
+    rows = db.query(StudentProfile.programme).distinct().order_by(StudentProfile.programme).all()
+    return [r[0] for r in rows]
+
+
 @students_router.get("/", response_model=List[StudentProfileOut])
 def list_students(
+    response: Response,
     programme: Optional[str] = None,
     year: Optional[int] = None,
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "lecturer")),
 ):
-    q = db.query(StudentProfile).options(joinedload(StudentProfile.user))
+    """
+    Paged student roster. Filtering and searching happen in SQL so the cohort
+    can grow to thousands without the client downloading all of it.
+
+    The unpaged total is returned in the `X-Total-Count` header.
+    """
+    conditions = []
     if programme:
-        q = q.filter(StudentProfile.programme == programme)
+        conditions.append(StudentProfile.programme == programme)
     if year:
-        q = q.filter(StudentProfile.year_of_study == year)
-    return q.offset(skip).limit(limit).all()
+        conditions.append(StudentProfile.year_of_study == year)
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        conditions.append(or_(
+            func.lower(StudentProfile.student_number).like(term),
+            func.lower(StudentProfile.programme).like(term),
+            func.lower(User.full_name).like(term),
+        ))
+
+    total = (
+        db.query(func.count(StudentProfile.id))
+        .join(User, User.id == StudentProfile.user_id)
+        .filter(*conditions)
+        .scalar()
+    ) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    return (
+        db.query(StudentProfile)
+        .join(User, User.id == StudentProfile.user_id)
+        .options(joinedload(StudentProfile.user))
+        .filter(*conditions)
+        .order_by(StudentProfile.student_number)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 @students_router.get("/me/dashboard", response_model=StudentDashboard)

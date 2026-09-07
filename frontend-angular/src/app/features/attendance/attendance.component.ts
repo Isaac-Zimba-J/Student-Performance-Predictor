@@ -1,13 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AttendanceService, CourseService, StudentService } from '../../core/services/api.services';
-import { CourseOut, StudentProfile } from '../../core/models';
+import { AttendanceService, CourseService } from '../../core/services/api.services';
+import { CourseOut } from '../../core/models';
+import { StudentPickerComponent } from '../../shared/components/student-picker/student-picker.component';
 
 @Component({
   selector: 'app-attendance',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StudentPickerComponent],
   template: `
     <div class="card">
       <div class="card-title">Record weekly attendance</div>
@@ -15,12 +16,9 @@ import { CourseOut, StudentProfile } from '../../core/models';
       <div class="form-row">
         <div class="form-group">
           <label>Student</label>
-          <select [(ngModel)]="form.student_id">
-            <option value="">— select student —</option>
-            <option *ngFor="let s of students" [value]="s.id">
-              {{ s.student_number }} — {{ s.programme }} Yr{{ s.year_of_study }}
-            </option>
-          </select>
+          <app-student-picker [studentId]="form.student_id"
+                              (studentIdChange)="form.student_id = $event">
+          </app-student-picker>
         </div>
         <div class="form-group">
           <label>Course</label>
@@ -107,7 +105,6 @@ import { CourseOut, StudentProfile } from '../../core/models';
 })
 export class AttendanceComponent implements OnInit {
   courses: CourseOut[] = [];
-  students: StudentProfile[] = [];
 
   form = {
     student_id: '', course_id: '', week_number: 1,
@@ -120,12 +117,10 @@ export class AttendanceComponent implements OnInit {
   constructor(
     private attendanceService: AttendanceService,
     private courseService: CourseService,
-    private studentService: StudentService,
   ) {}
 
   ngOnInit() {
     this.courseService.getAll().subscribe({ next: c => this.courses = c });
-    this.studentService.getAll().subscribe({ next: s => this.students = s });
   }
 
   get attendanceRatePct(): number {
