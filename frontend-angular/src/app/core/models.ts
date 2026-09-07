@@ -38,6 +38,20 @@ export interface StudentProfile {
   distance_from_campus_km: number;
 }
 
+/** A page of results plus the unpaged total reported by `X-Total-Count`. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+}
+
+export interface StudentQuery {
+  search?: string;
+  programme?: string;
+  year?: number | '';
+  skip?: number;
+  limit?: number;
+}
+
 // ── Predictions ───────────────────────────────────────────────
 export interface RiskFactorDetail {
   factor: string;
@@ -60,6 +74,19 @@ export interface PredictionOut {
 
 export interface PredictionHistoryPoint {
   id: string;
+  risk_level: RiskLevel;
+  risk_score: number;
+  predicted_gpa: number | null;
+  predicted_at: string;
+}
+
+/** One row of GET /predictions/latest — the newest prediction per student. */
+export interface LatestPredictionRow {
+  student_id: string;
+  student_name: string;
+  student_number: string;
+  programme: string;
+  year_of_study: number;
   risk_level: RiskLevel;
   risk_score: number;
   predicted_gpa: number | null;

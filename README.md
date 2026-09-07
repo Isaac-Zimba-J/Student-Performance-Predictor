@@ -231,20 +231,47 @@ cd backend
 python seed.py
 ```
 
+This creates a full-scale demo cohort — **5,000 students** by default, together
+with 120 courses, 600 assessments, 12 weeks of attendance per student, 75,000
+assessment marks, semester GPA history, and a pre-computed risk prediction for
+every student. It takes about 20 seconds.
+
 When it finishes you will see:
 
 ```
-✅ Seed complete!
+✅ Seed complete — 163,324 rows in 20.6s
+
+Risk distribution:
+  low        2,826   56.5%  ████████████████████████████
+  medium       951   19.0%  █████████
+  high         790   15.8%  ███████
+  critical     433    8.7%  ████
 
 Demo credentials (password: password123):
-  Admin:    admin@uni.ac.zm
-  Lecturer: shumba@uni.ac.zm
-  Lecturer: banda@uni.ac.zm
-  Students: student1@uni.ac.zm … student10@uni.ac.zm
+  Admin:     admin@uni.ac.zm
+  Lecturers: shumba@uni.ac.zm … daka@uni.ac.zm
+  Students:  student1@uni.ac.zm … student10@uni.ac.zm  (named demo cohort)
+             plus 4,990 generated accounts, e.g. lillian.mofya11@student.uni.ac.zm
 ```
 
-> Only run the seed script once. Running it a second time will fail because
-> the email addresses already exist in the database.
+**Options:**
+
+| Command | What it does |
+|---|---|
+| `python seed.py` | 5,000 students (wipes existing data first) |
+| `python seed.py --students 20000` | A larger cohort |
+| `python seed.py --students 200` | A small cohort for quick local testing |
+| `python seed.py --keep` | Append instead of wiping |
+| `python seed.py --no-predictions` | Skip pre-computed risk scores and interventions |
+
+> Re-running the seed is safe: by default it clears the seeded tables first,
+> so you will not hit duplicate-email errors. Use `--keep` only if you
+> deliberately want to add to what is already there.
+
+The ten named students (`student1@uni.ac.zm` … `student10@uni.ac.zm`) are always
+seeded first with fixed profiles, so the walkthroughs in `docs/TESTING.md` keep
+working at any cohort size. Every student's data is generated from a
+per-student seed, so the same student number always yields the same history.
 
 ---
 

@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session
+from typing import List, Optional
 from datetime import datetime
 from db.session import get_db
 from db.models import User, StudentProfile, RiskPrediction
-from api.schemas import PredictionOut, RiskSummary, RiskFactorDetail, PredictionHistoryPoint
+from api.schemas import (
+    PredictionOut, RiskSummary, RiskFactorDetail, PredictionHistoryPoint,
+    LatestPredictionRow,
+)
 from core.auth import get_current_user, require_role
 from ml.predictor import predict_student_risk, generate_recommendations
 import json
@@ -102,34 +107,134 @@ def risk_summary(
     db: Session = Depends(get_db),
     _: User = Depends(require_role("admin", "lecturer")),
 ):
-    """Cohort-level risk breakdown for the dashboard."""
-    from db.models import RiskLevel as RL
+    """
+    Cohort-level risk breakdown for the dashboard.
 
-    all_predictions = db.query(RiskPrediction).order_by(
-        RiskPrediction.student_id, RiskPrediction.created_at.desc()
-    ).all()
+    Counting happens entirely in SQL — at several thousand students there are
+    far too many prediction rows to pull into Python just to group them.
+    """
+    latest = _latest_prediction_subquery()
 
-    seen = set()
-    latest = []
-    for p in all_predictions:
-        if p.student_id not in seen:
-            seen.add(p.student_id)
-            latest.append(p)
+    rows = (
+        db.query(latest.c.risk_level, func.count().label("n"))
+        .filter(latest.c.rn == 1)
+        .group_by(latest.c.risk_level)
+        .all()
+    )
+    # risk_level comes back as a RiskLevel enum, whose str() is "RiskLevel.LOW" —
+    # key the counts off the stored value ("low") instead.
+    counts = {getattr(level, "value", level): n for level, n in rows}
 
-    counts = {RL.LOW: 0, RL.MEDIUM: 0, RL.HIGH: 0, RL.CRITICAL: 0}
-    for p in latest:
-        counts[p.risk_level] = counts.get(p.risk_level, 0) + 1
+    low = counts.get("low", 0)
+    medium = counts.get("medium", 0)
+    high = counts.get("high", 0)
+    critical = counts.get("critical", 0)
 
-    total = len(latest) or 1
-    at_risk = counts[RL.HIGH] + counts[RL.CRITICAL]
+    total = low + medium + high + critical
+    at_risk = high + critical
 
     return RiskSummary(
         total_students=total,
-        low_risk=counts[RL.LOW],
-        medium_risk=counts[RL.MEDIUM],
-        high_risk=counts[RL.HIGH],
-        critical_risk=counts[RL.CRITICAL],
-        at_risk_percentage=round(at_risk / total * 100, 1),
+        low_risk=low,
+        medium_risk=medium,
+        high_risk=high,
+        critical_risk=critical,
+        at_risk_percentage=round(at_risk / total * 100, 1) if total else 0.0,
+    )
+
+
+@router.get("/latest", response_model=List[LatestPredictionRow])
+def latest_predictions(
+    response: Response,
+    risk_level: Optional[str] = None,
+    search: Optional[str] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=500),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "lecturer")),
+):
+    """
+    Paged listing of each student's most recent prediction, highest risk first.
+
+    Lets the predictions screen show existing scores without firing one request
+    per student. The unpaged total is returned in the `X-Total-Count` header.
+    """
+    latest = _latest_prediction_subquery()
+
+    conditions = [latest.c.rn == 1]
+    if risk_level:
+        conditions.append(latest.c.risk_level == risk_level.lower())
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        conditions.append(or_(
+            func.lower(StudentProfile.student_number).like(term),
+            func.lower(StudentProfile.programme).like(term),
+            func.lower(User.full_name).like(term),
+        ))
+
+    # Highest risk first, so the students needing attention lead the list.
+    severity = case(
+        (latest.c.risk_level == "critical", 0),
+        (latest.c.risk_level == "high", 1),
+        (latest.c.risk_level == "medium", 2),
+        else_=3,
+    )
+
+    base = (
+        db.query(
+            StudentProfile.id.label("student_id"),
+            User.full_name.label("student_name"),
+            StudentProfile.student_number,
+            StudentProfile.programme,
+            StudentProfile.year_of_study,
+            latest.c.risk_level,
+            latest.c.risk_score,
+            latest.c.predicted_gpa,
+            latest.c.created_at.label("predicted_at"),
+        )
+        .select_from(latest)
+        .join(StudentProfile, StudentProfile.id == latest.c.student_id)
+        .join(User, User.id == StudentProfile.user_id)
+        .filter(*conditions)
+    )
+
+    total = (
+        db.query(func.count())
+        .select_from(latest)
+        .join(StudentProfile, StudentProfile.id == latest.c.student_id)
+        .join(User, User.id == StudentProfile.user_id)
+        .filter(*conditions)
+        .scalar()
+    ) or 0
+    response.headers["X-Total-Count"] = str(total)
+
+    rows = (
+        base.order_by(severity.asc(), latest.c.risk_score.desc(), StudentProfile.student_number)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    return [LatestPredictionRow.model_validate(r) for r in rows]
+
+
+def _latest_prediction_subquery():
+    """
+    Subquery numbering each student's predictions newest-first, so `rn == 1`
+    selects exactly one current prediction per student.
+    """
+    row_number = func.row_number().over(
+        partition_by=RiskPrediction.student_id,
+        order_by=RiskPrediction.created_at.desc(),
+    ).label("rn")
+    return (
+        select(
+            RiskPrediction.student_id,
+            RiskPrediction.risk_level,
+            RiskPrediction.risk_score,
+            RiskPrediction.predicted_gpa,
+            RiskPrediction.created_at,
+            row_number,
+        ).subquery()
     )
 
 

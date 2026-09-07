@@ -2,23 +2,24 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { InterventionService, StudentService } from '../../core/services/api.services';
+import { InterventionService } from '../../core/services/api.services';
 import { InterventionOut, StudentProfile } from '../../core/models';
+import { StudentPickerComponent } from '../../shared/components/student-picker/student-picker.component';
 
 @Component({
   selector: 'app-interventions',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, StudentPickerComponent],
   template: `
     <div class="card" style="margin-bottom:20px">
       <div class="card-title">Filter interventions</div>
-      <div style="display:flex;gap:12px;align-items:center">
-        <select class="search-box" style="width:220px" [(ngModel)]="selectedStudentId" (ngModelChange)="load()">
-          <option value="">— Select a student —</option>
-          <option *ngFor="let s of students" [value]="s.id">
-            {{ s.student_number }} ({{ s.programme }})
-          </option>
-        </select>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="width:320px">
+          <app-student-picker [studentId]="selectedStudentId"
+                              (studentIdChange)="onStudentSelected($event)"
+                              (studentChange)="selectedStudent = $event">
+          </app-student-picker>
+        </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted2);cursor:pointer">
           <input type="checkbox" [(ngModel)]="pendingOnly" (ngModelChange)="load()">
           Pending only
@@ -32,6 +33,11 @@ import { InterventionOut, StudentProfile } from '../../core/models';
     </div>
 
     <div *ngIf="selectedStudentId">
+      <div *ngIf="selectedStudent" style="font-size:13px;color:var(--muted2);margin-bottom:12px">
+        Interventions for <strong style="color:var(--text)">{{ selectedStudent.full_name }}</strong>
+        · {{ selectedStudent.student_number }}
+      </div>
+
       <div *ngIf="loading" class="empty-state"><div class="spinner"></div></div>
 
       <div *ngIf="!loading && interventions.length === 0" class="empty-state">
@@ -79,22 +85,23 @@ import { InterventionOut, StudentProfile } from '../../core/models';
   `,
 })
 export class InterventionsComponent implements OnInit {
-  students: StudentProfile[] = [];
   interventions: InterventionOut[] = [];
   selectedStudentId = '';
+  selectedStudent: StudentProfile | null = null;
   pendingOnly = false;
   loading = false;
   actioningId = '';
   outcomeNote = '';
   saving = false;
 
-  constructor(
-    private ivService: InterventionService,
-    private studentService: StudentService,
-  ) {}
+  constructor(private ivService: InterventionService) {}
 
-  ngOnInit() {
-    this.studentService.getAll().subscribe({ next: d => this.students = d });
+  ngOnInit() {}
+
+  onStudentSelected(studentId: string) {
+    this.selectedStudentId = studentId;
+    this.interventions = [];
+    this.load();
   }
 
   load() {

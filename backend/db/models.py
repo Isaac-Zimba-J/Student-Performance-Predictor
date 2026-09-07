@@ -55,8 +55,8 @@ class StudentProfile(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id"), unique=True, nullable=False)
     student_number = Column(String, unique=True, nullable=False, index=True)
-    programme = Column(String, nullable=False)
-    year_of_study = Column(Integer, nullable=False)
+    programme = Column(String, nullable=False, index=True)
+    year_of_study = Column(Integer, nullable=False, index=True)
     ses_status = Column(SAEnum(SESStatus, native_enum=False, values_callable=lambda x: [e.value for e in x]), default=SESStatus.MIDDLE)
     is_scholarship = Column(Boolean, default=False)
     is_employed_part_time = Column(Boolean, default=False)
@@ -102,8 +102,8 @@ class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
-    course_id = Column(String, ForeignKey("courses.id"), nullable=False)
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False, index=True)
+    course_id = Column(String, ForeignKey("courses.id"), nullable=False, index=True)
     week_number = Column(Integer, nullable=False)
     classes_held = Column(Integer, default=1)
     classes_attended = Column(Integer, default=0)
@@ -121,7 +121,7 @@ class Assessment(Base):
     __tablename__ = "assessments"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    course_id = Column(String, ForeignKey("courses.id"), nullable=False)
+    course_id = Column(String, ForeignKey("courses.id"), nullable=False, index=True)
     name = Column(String, nullable=False)        # e.g. "Test 1", "Assignment 2", "Exam"
     assessment_type = Column(String, nullable=False)   # test | assignment | exam
     max_marks = Column(Float, default=100.0)
@@ -136,8 +136,8 @@ class AssessmentResult(Base):
     __tablename__ = "assessment_results"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
-    assessment_id = Column(String, ForeignKey("assessments.id"), nullable=False)
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False, index=True)
+    assessment_id = Column(String, ForeignKey("assessments.id"), nullable=False, index=True)
     marks_obtained = Column(Float, nullable=True)   # Null = not yet submitted
     submitted_on_time = Column(Boolean, default=True)
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -152,7 +152,7 @@ class RiskPrediction(Base):
     __tablename__ = "risk_predictions"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False, index=True)
     risk_level = Column(SAEnum(RiskLevel, native_enum=False, values_callable=lambda x: [e.value for e in x]), nullable=False)
     risk_score = Column(Float, nullable=False)          # 0.0 – 1.0
     predicted_gpa = Column(Float, nullable=True)
@@ -169,7 +169,7 @@ class Intervention(Base):
     __tablename__ = "interventions"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False, index=True)
     intervention_type = Column(String, nullable=False)  # tutoring | counseling | alert | resource
     description = Column(Text, nullable=False)
     recommended_by = Column(String, default="system")   # system | lecturer_id
@@ -187,7 +187,7 @@ class SemesterGPA(Base):
     __tablename__ = "semester_gpas"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False)
+    student_id = Column(String, ForeignKey("student_profiles.id"), nullable=False, index=True)
     year = Column(Integer, nullable=False)              # e.g. 2024
     semester = Column(Integer, nullable=False)          # 1 or 2
     gpa = Column(Float, nullable=False)                 # 0.0 – 4.0

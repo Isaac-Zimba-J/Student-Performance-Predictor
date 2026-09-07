@@ -40,6 +40,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Paged endpoints report their unpaged total here; without this the
+    # browser hides the header from the Angular client.
+    expose_headers=["X-Total-Count"],
 )
 
 PREFIX = "/api"
