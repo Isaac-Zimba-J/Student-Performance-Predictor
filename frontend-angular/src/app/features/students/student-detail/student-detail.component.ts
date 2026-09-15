@@ -2,18 +2,67 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { PredictionService, InterventionService, AttendanceService, SemesterGPAService } from '../../../core/services/api.services';
-import { PredictionOut, PredictionHistoryPoint, InterventionOut, AttendanceOut, SemesterGPAOut } from '../../../core/models';
+import { PredictionService, InterventionService, AttendanceService, SemesterGPAService, StudentService } from '../../../core/services/api.services';
+import { PredictionOut, PredictionHistoryPoint, InterventionOut, AttendanceOut, SemesterGPAOut, StudentProfile } from '../../../core/models';
 import { AuthService } from '../../../core/services/auth.service';
+import { RiskFactorsComponent } from '../../../shared/components/risk-factors/risk-factors.component';
 
 interface ChartPoint { x: number; y: number; point: PredictionHistoryPoint; }
 
 @Component({
   selector: 'app-student-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, RiskFactorsComponent],
   template: `
     <a routerLink="/students" class="btn-sm secondary" style="display:inline-block;margin-bottom:20px">← Back to students</a>
+
+    <!-- Student details -->
+    <div class="card" style="margin-bottom:20px" *ngIf="profile">
+      <div style="display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start">
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;margin-bottom:6px">
+            {{ profile.full_name }}
+          </div>
+          <div style="font-size:13px;color:var(--muted2);display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <span>{{ profile.student_number }}</span>
+            <span>·</span><span>{{ profile.programme }}</span>
+            <span>·</span><span>Year {{ profile.year_of_study }}</span>
+            <span>·</span><span class="tag ses-{{ profile.ses_status }}">SES {{ profile.ses_status }}</span>
+            <span *ngIf="profile.is_scholarship" class="tag" style="background:rgba(99,102,241,0.15);color:var(--accent2)">Scholarship</span>
+            <span *ngIf="profile.is_employed_part_time" class="tag" style="background:var(--surface2);color:var(--muted2)">Works part-time</span>
+            <span>·</span><span>{{ profile.distance_from_campus_km }} km from campus</span>
+          </div>
+        </div>
+
+        <!-- Sign-in details: lets staff log in as this student for demos and support -->
+        <div style="min-width:320px;flex:0 1 380px">
+          <div class="card-title" style="margin-bottom:6px">Sign-in details</div>
+          <div class="credential-row">
+            <span class="credential-label">Email</span>
+            <span class="credential-value">{{ profile.email }}</span>
+            <button class="copy-btn" (click)="copy(profile.email)">{{ copied === profile.email ? 'Copied' : 'Copy' }}</button>
+          </div>
+          <div class="credential-row" *ngIf="isAdmin">
+            <span class="credential-label">Password</span>
+            <ng-container *ngIf="resetResult; else resetControls">
+              <span class="credential-value">{{ resetResult.password }}</span>
+              <button class="copy-btn" (click)="copy(resetResult.password)">{{ copied === resetResult.password ? 'Copied' : 'Copy' }}</button>
+              <span style="color:var(--green);font-size:12px">✓ Reset</span>
+            </ng-container>
+            <ng-template #resetControls>
+              <span style="color:var(--muted);font-size:12px">hidden</span>
+              <button class="copy-btn" (click)="resetPassword()" [disabled]="resetting">
+                {{ resetting ? 'Resetting…' : 'Reset to demo password' }}
+              </button>
+            </ng-template>
+          </div>
+          <div *ngIf="resetError" style="color:var(--red);font-size:12px;margin-top:6px">{{ resetError }}</div>
+          <div *ngIf="!isAdmin" style="font-size:11px;color:var(--muted);margin-top:6px">
+            Seeded demo accounts use the shared demo password. An admin can reset it from this page.
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="grid-2">
       <!-- Risk card -->
@@ -51,22 +100,13 @@ interface ChartPoint { x: number; y: number; point: PredictionHistoryPoint; }
         </div>
       </div>
 
-      <!-- Risk factors -->
-      <div class="card">
-        <div class="card-title">Key risk factors</div>
-        <div *ngIf="prediction">
-          <div class="factor-item" *ngFor="let f of prediction.risk_factors">
-            <div class="factor-header">
-              <span class="factor-name">{{ f.factor }}</span>
-              <span class="factor-val">{{ f.value }}</span>
-            </div>
-            <div class="factor-bar">
-              <div class="factor-fill" [ngClass]="f.impact > 0 ? 'negative' : 'positive'"
-                   [style.width.%]="barWidth(f.impact)"></div>
-            </div>
-          </div>
+      <!-- Key risk assessment: only rendered once there is a prediction to explain -->
+      <div class="card" *ngIf="prediction && !loadingPred">
+        <div class="card-title" style="margin-bottom:4px">Key risk assessment</div>
+        <div style="font-size:12px;color:var(--muted2);margin-bottom:16px">
+          What the model assessed for this student and how each factor moved the score.
         </div>
-        <div *ngIf="!prediction && !loadingPred" class="empty-state">Run prediction first</div>
+        <app-risk-factors [factors]="prediction.risk_factors"></app-risk-factors>
       </div>
     </div>
 
@@ -285,7 +325,12 @@ interface ChartPoint { x: number; y: number; point: PredictionHistoryPoint; }
 })
 export class StudentDetailComponent implements OnInit {
   studentId = '';
+  profile: StudentProfile | null = null;
   prediction: PredictionOut | null = null;
+  copied = '';
+  resetting = false;
+  resetResult: { email: string; password: string } | null = null;
+  resetError = '';
   history: PredictionHistoryPoint[] = [];
   attendance: AttendanceOut[] = [];
   interventions: InterventionOut[] = [];
@@ -318,7 +363,10 @@ export class StudentDetailComponent implements OnInit {
     private attendanceService: AttendanceService,
     private auth: AuthService,
     private gpaService: SemesterGPAService,
+    private studentService: StudentService,
   ) {}
+
+  get isAdmin(): boolean { return this.auth.hasRole('admin'); }
 
   ngOnInit() {
     this.studentId = this.route.snapshot.paramMap.get('id')!;
@@ -329,15 +377,43 @@ export class StudentDetailComponent implements OnInit {
     this.loadGPAs();
   }
 
+  /** One request returns the profile and the current prediction together. */
   loadPrediction() {
     this.loadingPred = true;
-    this.predService.getStudentPrediction(this.studentId).subscribe({
-      next: p => { this.prediction = p; this.loadingPred = false; },
-      error: () => { this.predError = 'Not enough data to generate prediction yet.'; this.loadingPred = false; },
+    this.studentService.getStudentDashboard(this.studentId).subscribe({
+      next: d => {
+        this.profile = d.profile;
+        this.prediction = d.current_risk;
+        if (!d.current_risk) this.predError = 'Not enough data to generate a prediction yet.';
+        this.loadingPred = false;
+      },
+      error: () => { this.predError = 'Could not load this student.'; this.loadingPred = false; },
     });
   }
 
-  refreshPrediction() { this.predError = ''; this.loadPrediction(); }
+  refreshPrediction() {
+    this.predError = '';
+    this.loadingPred = true;
+    this.predService.getStudentPrediction(this.studentId).subscribe({
+      next: p => { this.prediction = p; this.loadingPred = false; this.loadHistory(); },
+      error: () => { this.predError = 'Not enough data to generate a prediction yet.'; this.loadingPred = false; },
+    });
+  }
+
+  resetPassword() {
+    this.resetting = true; this.resetError = '';
+    this.studentService.resetPassword(this.studentId).subscribe({
+      next: r => { this.resetResult = r; this.resetting = false; },
+      error: e => { this.resetError = e.error?.detail || 'Could not reset password'; this.resetting = false; },
+    });
+  }
+
+  copy(text: string) {
+    navigator.clipboard?.writeText(text).then(() => {
+      this.copied = text;
+      setTimeout(() => { if (this.copied === text) this.copied = ''; }, 1500);
+    }).catch(() => {});
+  }
 
   loadHistory() {
     this.predService.getHistory(this.studentId).subscribe({
@@ -480,10 +556,6 @@ export class StudentDetailComponent implements OnInit {
     const totalHeld = this.attendance.reduce((s, a) => s + a.classes_held, 0);
     const totalAtt = this.attendance.reduce((s, a) => s + a.classes_attended, 0);
     return totalHeld ? (totalAtt / totalHeld) * 100 : 0;
-  }
-
-  barWidth(impact: number): number {
-    return Math.min(Math.abs(impact) * 300, 100);
   }
 
   attColor(rate: number): string {

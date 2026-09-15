@@ -11,8 +11,9 @@ from api.schemas import (
     StudentDashboard, StudentProfileOut,
     CourseOut, AssessmentOut, CourseCreate,
     SemesterGPACreate, SemesterGPAOut,
+    PasswordResetRequest, PasswordResetOut,
 )
-from core.auth import get_current_user, require_role
+from core.auth import get_current_user, require_role, hash_password
 from datetime import datetime
 
 # ─── COURSES ─────────────────────────────────────────────────────────────────
@@ -148,6 +149,32 @@ def my_dashboard(
     if not profile:
         raise HTTPException(status_code=404, detail="Student profile not found")
     return _build_dashboard(profile, db)
+
+
+@students_router.post("/{student_id}/reset-password", response_model=PasswordResetOut)
+def reset_student_password(
+    student_id: str,
+    data: PasswordResetRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin")),
+):
+    """
+    Admin-only: set a student's password so staff can sign in as that student
+    for demos and support. Defaults to the shared demo password.
+    """
+    profile = (
+        db.query(StudentProfile)
+        .options(joinedload(StudentProfile.user))
+        .filter(StudentProfile.id == student_id)
+        .first()
+    )
+    if not profile or not profile.user:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    profile.user.hashed_password = hash_password(data.password)
+    profile.user.is_active = True
+    db.commit()
+    return PasswordResetOut(student_id=profile.id, email=profile.user.email, password=data.password)
 
 
 @students_router.get("/{student_id}/dashboard", response_model=StudentDashboard)

@@ -212,6 +212,38 @@ body {
 .factor-fill { height: 100%; border-radius: 3px; }
 .factor-fill.negative { background: var(--red); }
 .factor-fill.positive { background: var(--green); }
+.factor-fill.neutral  { background: transparent; }
+.factor-item.compact { margin-bottom: 8px; }
+.factor-item.compact .factor-name { font-size: 12px; }
+.factor-dir { display: inline-block; width: 12px; font-size: 9px; margin-right: 4px; }
+.factor-dir.negative { color: var(--red); }
+.factor-dir.positive { color: var(--green); }
+.factor-dir.neutral  { color: var(--muted); }
+.factor-detail { font-size: 12px; color: var(--muted2); margin-top: 5px; line-height: 1.45; }
+.factor-legend {
+  display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border); font-size: 11px; color: var(--muted2);
+}
+.factor-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.factor-legend i { width: 10px; height: 6px; border-radius: 3px; display: inline-block; }
+.factor-legend i.negative { background: var(--red); }
+.factor-legend i.positive { background: var(--green); }
+.factor-legend i.neutral  { background: var(--surface2); border: 1px solid var(--border); }
+
+/* ── SIGN-IN DETAILS (student detail page) ── */
+.credential-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.credential-row:last-child { border-bottom: none; }
+.credential-label { color: var(--muted2); min-width: 90px; }
+.credential-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+.copy-btn {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--surface2); color: var(--muted2);
+  cursor: pointer; font-family: var(--font-body);
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent2); }
 
 /* ── RECOMMENDATION CARDS ── */
 .rec-item {

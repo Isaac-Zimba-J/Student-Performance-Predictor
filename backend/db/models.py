@@ -76,6 +76,10 @@ class StudentProfile(Base):
     def full_name(self) -> str:
         return self.user.full_name if self.user else ""
 
+    @property
+    def email(self) -> str:
+        return self.user.email if self.user else ""
+
 
 # ─── COURSE ───────────────────────────────────────────────────────────────────
 

@@ -71,12 +71,24 @@ class StudentProfileOut(BaseModel):
     id: str
     student_number: str
     full_name: str = ""
+    email: str = ""
     programme: str
     year_of_study: int
     ses_status: SESStatus
     is_scholarship: bool
     is_employed_part_time: bool
     distance_from_campus_km: float
+
+
+class PasswordResetRequest(BaseModel):
+    """Admin-set password for a student account; defaults to the demo password."""
+    password: str = Field(default="password123", min_length=6, max_length=72)
+
+
+class PasswordResetOut(BaseModel):
+    student_id: str
+    email: str
+    password: str
 
 
 # ─── ATTENDANCE ───────────────────────────────────────────────────────────────
@@ -131,8 +143,9 @@ class AssessmentResultOut(BaseModel):
 
 class RiskFactorDetail(BaseModel):
     factor: str
-    impact: float
-    value: str
+    impact: float          # + raises risk, − protects
+    value: str             # observed value, formatted with units
+    detail: Optional[str] = None   # one sentence on what was assessed
 
 
 class PredictionOut(BaseModel):

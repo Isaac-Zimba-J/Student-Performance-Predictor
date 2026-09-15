@@ -8,11 +8,12 @@ import { PredictionService } from '../../core/services/api.services';
 import { LatestPredictionRow, PredictionOut, RiskLevel } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
 import { PagerComponent } from '../../shared/components/pager/pager.component';
+import { RiskFactorsComponent } from '../../shared/components/risk-factors/risk-factors.component';
 
 @Component({
   selector: 'app-predictions',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, PagerComponent],
+  imports: [CommonModule, RouterModule, FormsModule, PagerComponent, RiskFactorsComponent],
   template: `
     <div class="card" style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
@@ -93,16 +94,7 @@ import { PagerComponent } from '../../shared/components/pager/pager.component';
 
           <!-- Top factors appear once a prediction has been re-run in this session -->
           <div *ngIf="fresh[r.student_id] as pred" style="margin-top:14px">
-            <div *ngFor="let f of pred.risk_factors.slice(0,3)" class="factor-item" style="margin-bottom:8px">
-              <div class="factor-header">
-                <span class="factor-name" style="font-size:12px">{{ f.factor }}</span>
-                <span class="factor-val">{{ f.value }}</span>
-              </div>
-              <div class="factor-bar">
-                <div class="factor-fill" [ngClass]="f.impact > 0 ? 'negative' : 'positive'"
-                     [style.width.%]="barWidth(f.impact)"></div>
-              </div>
-            </div>
+            <app-risk-factors [factors]="pred.risk_factors" [limit]="3" [compact]="true"></app-risk-factors>
           </div>
         </div>
       </div>
@@ -215,10 +207,6 @@ export class PredictionsComponent implements OnInit, OnDestroy {
         this.retrainMsg = e.error?.detail || 'Retraining failed';
       },
     });
-  }
-
-  barWidth(impact: number): number {
-    return Math.min(Math.abs(impact) * 300, 100);
   }
 
   trackById(_: number, r: LatestPredictionRow) { return r.student_id; }

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
   PredictionOut, PredictionHistoryPoint, RiskSummary, StudentProfile, StudentDashboard,
-  Page, StudentQuery, LatestPredictionRow,
+  Page, StudentQuery, LatestPredictionRow, PasswordResetOut,
   AttendanceCreate, AttendanceOut, InterventionCreate, InterventionOut,
   CourseOut, CourseCreate, AssessmentResultCreate, AssessmentResultOut,
   SemesterGPACreate, SemesterGPAOut,
@@ -102,6 +102,14 @@ export class StudentService {
 
   getStudentDashboard(studentId: string): Observable<StudentDashboard> {
     return this.http.get<StudentDashboard>(`${API}/students/${studentId}/dashboard`);
+  }
+
+  /** Admin only: set a student's password (defaults to the demo password server-side). */
+  resetPassword(studentId: string, password?: string): Observable<PasswordResetOut> {
+    return this.http.post<PasswordResetOut>(
+      `${API}/students/${studentId}/reset-password`,
+      password ? { password } : {},
+    );
   }
 }
 

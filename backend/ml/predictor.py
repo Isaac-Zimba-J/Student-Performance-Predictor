@@ -63,6 +63,7 @@ FEATURE_LABELS = {
 }
 
 SES_MAP = {"low": 0, "middle": 1, "high": 2}
+MAX_RISK_FACTORS = 6
 RISK_MAP = {0: RiskLevel.LOW, 1: RiskLevel.MEDIUM, 2: RiskLevel.HIGH, 3: RiskLevel.CRITICAL}
 
 
@@ -107,6 +108,11 @@ def build_features(student_id: str, db: Session) -> Optional[dict]:
         AssessmentResult.student_id == student_id
     ).all()
 
+    # With neither attendance nor marks there is nothing to assess; scoring the
+    # defaults would invent a "high risk" verdict for a student we know nothing about.
+    if not attendance_rows and not result_rows:
+        return None
+
     # Normalise to percentage using each assessment's own max_marks
     pct_scores = [
         (r.marks_obtained / r.assessment.max_marks * 100)
@@ -146,39 +152,115 @@ def features_to_array(features: dict) -> np.ndarray:
 
 # ── Rule-based fallback (used before model is trained) ────────────────────────
 
-def rule_based_risk(features: dict) -> tuple[RiskLevel, float]:
-    """Simple heuristic risk scoring — replaced by ML once model is trained."""
-    score = 0.0
+# Thresholds and weights that make up the rule-based risk score. Kept in one
+# place so the score and the per-factor explanation can never disagree.
+ATTENDANCE_BANDS = [(0.50, 0.40), (0.70, 0.25), (0.85, 0.10)]   # (below, penalty)
+PERFORMANCE_BANDS = [(40.0, 0.35), (55.0, 0.22), (65.0, 0.10)]
+SES_LOW_PENALTY = 0.10
+EMPLOYED_PENALTY = 0.05
+MISSED_PENALTY, MISSED_CAP = 0.04, 0.10
+LATE_PENALTY, LATE_CAP = 0.02, 0.05
+# How much credit a factor earns when it sits comfortably above the safe threshold.
+PROTECTIVE_CAP = 0.10
+
+
+def _banded_penalty(value: float, bands: list[tuple[float, float]]) -> float:
+    for threshold, penalty in bands:
+        if value < threshold:
+            return penalty
+    return 0.0
+
+
+def rule_based_breakdown(features: dict) -> list[dict]:
+    """
+    Explain the rule-based score factor by factor.
+
+    Returns one entry per assessed factor with:
+      factor  – human-readable label
+      impact  – signed contribution to the risk score (+ raises risk, − protects)
+      value   – the observed value, formatted with units
+      detail  – one sentence saying what was assessed and why it counted
+    Summing the positive impacts (capped at 1.0) gives the risk score itself.
+    """
+    out = []
 
     # Attendance (weight 40%)
     att = features["attendance_rate"]
-    if att < 0.5:
-        score += 0.4
-    elif att < 0.7:
-        score += 0.25
-    elif att < 0.85:
-        score += 0.1
+    att_pct = round(att * 100)
+    penalty = _banded_penalty(att, ATTENDANCE_BANDS)
+    if penalty:
+        band = next(t for t, p in ATTENDANCE_BANDS if att < t)
+        detail = f"Attended {att_pct}% of classes — below the {round(band * 100)}% threshold."
+        impact = penalty
+    else:
+        detail = f"Attended {att_pct}% of classes — at or above the 85% target."
+        impact = -min((att - 0.85) / 0.15, 1.0) * PROTECTIVE_CAP
+    out.append({"factor": FEATURE_LABELS["attendance_rate"], "impact": impact,
+                "value": f"{att_pct}%", "detail": detail})
 
     # Assessment performance (weight 35%)
     perf = features["avg_assessment_score"]
-    if perf < 40:
-        score += 0.35
-    elif perf < 55:
-        score += 0.22
-    elif perf < 65:
-        score += 0.1
+    penalty = _banded_penalty(perf, PERFORMANCE_BANDS)
+    if penalty:
+        band = next(t for t, p in PERFORMANCE_BANDS if perf < t)
+        detail = f"Averaging {perf:.0f}% across marked assessments — below the {band:.0f}% threshold."
+        impact = penalty
+    else:
+        detail = f"Averaging {perf:.0f}% across marked assessments — a passing average."
+        impact = -min((perf - 65) / 35, 1.0) * PROTECTIVE_CAP
+    out.append({"factor": FEATURE_LABELS["avg_assessment_score"], "impact": impact,
+                "value": f"{perf:.0f}% avg", "detail": detail})
 
-    # SES (weight 15%)
-    if features["ses_encoded"] == 0:
-        score += 0.1
-    if features["is_employed"]:
-        score += 0.05
+    # Missed assessments (up to 10%)
+    missed = int(features["assessments_missed"])
+    impact = min(missed * MISSED_PENALTY, MISSED_CAP)
+    out.append({
+        "factor": FEATURE_LABELS["assessments_missed"], "impact": impact,
+        "value": f"{missed} missed",
+        "detail": (f"{missed} assessment(s) have no submitted mark." if missed
+                   else "Every assessment has a submitted mark."),
+    })
 
-    # Missed assessments (weight 10%)
-    score += min(features["assessments_missed"] * 0.04, 0.1)
-    score += min(features["late_submissions"] * 0.02, 0.05)
+    # Late submissions (up to 5%)
+    late = int(features["late_submissions"])
+    impact = min(late * LATE_PENALTY, LATE_CAP)
+    out.append({
+        "factor": FEATURE_LABELS["late_submissions"], "impact": impact,
+        "value": f"{late} late",
+        "detail": (f"{late} submission(s) were handed in after the deadline." if late
+                   else "All work was submitted on time."),
+    })
 
-    score = min(score, 1.0)
+    # Socioeconomic status (10% if low)
+    ses_label = {0: "Low", 1: "Middle", 2: "High"}.get(int(features["ses_encoded"]), "Middle")
+    impact = SES_LOW_PENALTY if features["ses_encoded"] == 0 else 0.0
+    out.append({
+        "factor": FEATURE_LABELS["ses_encoded"], "impact": impact,
+        "value": ses_label,
+        "detail": ("Low socioeconomic status is associated with higher dropout risk."
+                   if impact else "Socioeconomic status is not adding to the risk score."),
+    })
+
+    # Part-time employment (5%)
+    employed = bool(features["is_employed"])
+    out.append({
+        "factor": FEATURE_LABELS["is_employed"], "impact": EMPLOYED_PENALTY if employed else 0.0,
+        "value": "Yes" if employed else "No",
+        "detail": ("Working alongside studies reduces available study time."
+                   if employed else "Not in part-time employment."),
+    })
+
+    for entry in out:
+        entry["impact"] = round(entry["impact"], 4)
+    return out
+
+
+def rule_based_risk(features: dict) -> tuple[RiskLevel, float]:
+    """Simple heuristic risk scoring — replaced by ML once model is trained."""
+    score = sum(f["impact"] for f in rule_based_breakdown(features) if f["impact"] > 0)
+    # Round before banding: the weights are exact decimals, so a student whose
+    # penalties total 0.50 must land in "high", not drift to 0.4999… and "medium".
+    score = round(min(score, 1.0), 4)
 
     if score < 0.25:
         level = RiskLevel.LOW
@@ -190,6 +272,18 @@ def rule_based_risk(features: dict) -> tuple[RiskLevel, float]:
         level = RiskLevel.CRITICAL
 
     return level, round(score, 4)
+
+
+def estimate_gpa(features: dict) -> float:
+    """
+    Heuristic end-of-semester GPA for when no trained regressor exists:
+    a blend of current assessment average and prior GPA, minus a small
+    penalty per missed assessment.
+    """
+    from_marks = features["avg_assessment_score"] / 100 * 4.0
+    blended = 0.6 * from_marks + 0.4 * features["gpa_prior"]
+    blended -= min(features["assessments_missed"], 5) * 0.08
+    return round(max(0.0, min(4.0, blended)), 2)
 
 
 def predict_student_risk(student_id: str, db: Session) -> Optional[dict]:
@@ -229,7 +323,7 @@ def predict_student_risk(student_id: str, db: Session) -> Optional[dict]:
                 "impact": round(float(impact), 4),
                 "value": str(round(features[fname], 3)),
             })
-        risk_factors.sort(key=lambda x: abs(x["impact"]), reverse=True)
+        risk_factors.sort(key=_factor_order)
 
         predicted_gpa = None
         if os.path.exists(GPA_REGRESSOR_PATH):
@@ -240,24 +334,25 @@ def predict_student_risk(student_id: str, db: Session) -> Optional[dict]:
         # ── Fallback: rule-based scoring ──────────────────────────
         risk_level, risk_score = rule_based_risk(features)
 
-        risk_factors = [
-            {
-                "factor": FEATURE_LABELS.get(k, k),
-                "impact": round((1 - features[k]) * 0.4 if k == "attendance_rate" else features[k] * 0.1, 4),
-                "value": str(round(features[k], 3)),
-            }
-            for k in FEATURE_NAMES
-        ]
-        risk_factors.sort(key=lambda x: abs(x["impact"]), reverse=True)
-        predicted_gpa = None
+        # Every assessed factor: risk-raising ones first (largest on top), then
+        # protective ones, then the factors that made no difference.
+        risk_factors = rule_based_breakdown(features)
+        risk_factors.sort(key=_factor_order)
+        predicted_gpa = estimate_gpa(features)
 
     return {
         "risk_level": risk_level,
         "risk_score": risk_score,
         "predicted_gpa": predicted_gpa,
-        "risk_factors": risk_factors[:5],   # top 5 factors
+        "risk_factors": risk_factors[:MAX_RISK_FACTORS],
         "raw_features": features,
     }
+
+
+def _factor_order(factor: dict):
+    impact = factor["impact"]
+    group = 0 if impact > 0 else (1 if impact < 0 else 2)
+    return (group, -abs(impact))
 
 
 def generate_recommendations(risk_result: dict) -> list[str]:
