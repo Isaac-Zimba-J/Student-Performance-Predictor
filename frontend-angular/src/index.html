@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <!-- Without this, styles.css and the JS bundles resolve relative to the
+       current route, so refreshing /students/<id> loads a blank page. -->
+  <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AcademIQ — Student Performance Predictor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">

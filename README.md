@@ -270,7 +270,12 @@ Demo credentials (password: password123):
 
 The ten named students (`student1@uni.ac.zm` … `student10@uni.ac.zm`) are always
 seeded first with fixed profiles, so the walkthroughs in `docs/TESTING.md` keep
-working at any cohort size. Every student's data is generated from a
+working at any cohort size.
+
+**Signing in as any student:** every seeded account uses `password123`. Each
+student's sign-in email is shown on the Students list and at the top of their
+detail page, and an admin can reset any student's password to the demo password
+from that page (useful for accounts registered through the Register form). Every student's data is generated from a
 per-student seed, so the same student number always yields the same history.
 
 ---

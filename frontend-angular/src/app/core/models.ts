@@ -30,6 +30,7 @@ export interface StudentProfile {
   id: string;
   student_number: string;
   full_name: string;
+  email: string;
   programme: string;
   year_of_study: number;
   ses_status: SESStatus;
@@ -55,8 +56,18 @@ export interface StudentQuery {
 // ── Predictions ───────────────────────────────────────────────
 export interface RiskFactorDetail {
   factor: string;
+  /** Signed contribution to the score: positive raises risk, negative protects. */
   impact: number;
+  /** Observed value, already formatted with units (e.g. "45%", "6 missed"). */
   value: string;
+  /** One sentence on what was assessed and why it counted. */
+  detail?: string | null;
+}
+
+export interface PasswordResetOut {
+  student_id: string;
+  email: string;
+  password: string;
 }
 
 export interface PredictionOut {

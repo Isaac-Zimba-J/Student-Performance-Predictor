@@ -66,6 +66,7 @@ import { PagerComponent } from '../../../shared/components/pager/pager.component
               <td>
                 <div class="student-name">{{ s.full_name }}</div>
                 <div style="font-size:11px;color:var(--muted2)">{{ s.student_number }}</div>
+                <div style="font-size:11px;color:var(--muted)">{{ s.email }}</div>
               </td>
               <td>{{ s.programme }}</td>
               <td>Year {{ s.year_of_study }}</td>

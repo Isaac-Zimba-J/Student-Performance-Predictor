@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { PredictionService } from '../../core/services/api.services';
 import { PredictionOut } from '../../core/models';
 import { AuthService } from '../../core/services/auth.service';
+import { RiskFactorsComponent } from '../../shared/components/risk-factors/risk-factors.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RiskFactorsComponent],
   template: `
     <div class="grid-2">
       <div class="card">
@@ -33,17 +34,11 @@ import { AuthService } from '../../core/services/auth.service';
             </div>
           </div>
 
-          <div class="card-title" style="margin-top:16px">What is affecting your score</div>
-          <div class="factor-item" *ngFor="let f of prediction.risk_factors">
-            <div class="factor-header">
-              <span class="factor-name">{{ f.factor }}</span>
-              <span class="factor-val">{{ f.value }}</span>
-            </div>
-            <div class="factor-bar">
-              <div class="factor-fill" [ngClass]="f.impact > 0 ? 'negative' : 'positive'"
-                   [style.width.%]="barWidth(f.impact)"></div>
-            </div>
+          <div class="card-title" style="margin-top:16px;margin-bottom:4px">What is affecting your score</div>
+          <div style="font-size:12px;color:var(--muted2);margin-bottom:14px">
+            Each factor below was assessed for you; the bar shows how much it moved your score.
           </div>
+          <app-risk-factors [factors]="prediction.risk_factors"></app-risk-factors>
 
           <div style="font-size:12px;color:var(--muted2);margin-top:16px">
             Last updated: {{ prediction.predicted_at | date:'mediumDate' }}
@@ -51,10 +46,10 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
       </div>
 
-      <div class="card">
+      <!-- Recommendations only exist once there is a prediction to base them on -->
+      <div class="card" *ngIf="prediction && !loading">
         <div class="card-title">Personalised recommendations</div>
-        <div *ngIf="!prediction" class="empty-state">Waiting for prediction data…</div>
-        <div class="rec-item" *ngFor="let r of prediction?.recommendations; let i = index">
+        <div class="rec-item" *ngFor="let r of prediction.recommendations; let i = index">
           <span class="rec-icon">{{ icons[i] || '▸' }}</span>
           <span>{{ r }}</span>
         </div>
@@ -89,7 +84,4 @@ export class ProfileComponent implements OnInit {
     return `conic-gradient(${c} ${this.riskPct}%, var(--surface2) 0)`;
   }
 
-  barWidth(impact: number): number {
-    return Math.min(Math.abs(impact) * 300, 100);
-  }
 }

@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { PredictionService } from '../../core/services/api.services';
-import { RiskSummary } from '../../core/models';
+import { RiskSummary, LatestPredictionRow } from '../../core/models';
 
 interface DonutSlice {
   color: string;
@@ -15,7 +16,7 @@ interface DonutSlice {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
     <div class="stat-grid">
       <div class="stat-card total">
@@ -128,10 +129,87 @@ interface DonutSlice {
         </ng-container>
       </div>
     </div>
+
+    <!-- Students needing attention -->
+    <div class="card card-flush" style="margin-top:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <div class="card-title" style="margin:0 0 4px">Students needing attention</div>
+          <div style="font-size:12px;color:var(--muted2)">
+            Highest-risk students first, from each student's latest prediction.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="search-box compact pager-select" [(ngModel)]="attentionFilter" (ngModelChange)="loadAttention()">
+            <option value="">Critical &amp; high</option>
+            <option value="critical">Critical only</option>
+            <option value="high">High only</option>
+            <option value="medium">Medium only</option>
+          </select>
+          <a routerLink="/predictions" class="btn-sm secondary">All predictions →</a>
+        </div>
+      </div>
+
+      <div *ngIf="loadingAttention" class="empty-state"><div class="spinner"></div></div>
+
+      <div *ngIf="!loadingAttention && attention.length === 0" class="empty-state">
+        <div class="empty-icon">✓</div>No students in this band right now.
+      </div>
+
+      <div class="scroll-area short" *ngIf="!loadingAttention && attention.length > 0">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Programme</th>
+              <th>Year</th>
+              <th>Risk</th>
+              <th>Score</th>
+              <th>Predicted GPA</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of attention; trackBy: trackById">
+              <td>
+                <div class="student-name">{{ r.student_name }}</div>
+                <div style="font-size:11px;color:var(--muted2)">{{ r.student_number }}</div>
+              </td>
+              <td>{{ r.programme }}</td>
+              <td>Year {{ r.year_of_study }}</td>
+              <td>
+                <span class="risk-badge {{ r.risk_level }}">
+                  <span class="risk-dot"></span>{{ r.risk_level.toUpperCase() }}
+                </span>
+              </td>
+              <td>
+                <div style="min-width:90px">
+                  <div style="font-size:13px;font-weight:600">{{ (r.risk_score * 100).toFixed(0) }}%</div>
+                  <div class="risk-meter"><div class="risk-fill {{ r.risk_level }}" [style.width.%]="r.risk_score * 100"></div></div>
+                </div>
+              </td>
+              <td>{{ r.predicted_gpa !== null ? r.predicted_gpa.toFixed(2) : '—' }}</td>
+              <td style="text-align:right">
+                <a [routerLink]="['/students', r.student_id]" class="btn-sm primary">View</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="attentionTotal > attention.length" style="font-size:12px;color:var(--muted2);margin-top:12px">
+        Showing the top {{ attention.length }} of {{ attentionTotal | number }} —
+        <a routerLink="/predictions" style="color:var(--accent2)">see the full list</a>.
+      </div>
+    </div>
   `,
 })
 export class DashboardComponent implements OnInit {
   summary: RiskSummary | null = null;
+  attention: LatestPredictionRow[] = [];
+  filteredTotal = 0;
+  attentionFilter = '';
+  loadingAttention = true;
   readonly circumference = 2 * Math.PI * 70;
 
   constructor(private predictionService: PredictionService) {}
@@ -140,7 +218,34 @@ export class DashboardComponent implements OnInit {
     this.predictionService.getRiskSummary().subscribe({
       next: s => { this.summary = s; },
     });
+    this.loadAttention();
   }
+
+  /**
+   * Top of the at-risk list. The API sorts critical → high → medium → low, so
+   * with no band filter the first page is exactly the critical + high students.
+   */
+  loadAttention() {
+    this.loadingAttention = true;
+    this.predictionService.getLatest({ riskLevel: this.attentionFilter || undefined, limit: 15 }).subscribe({
+      next: page => {
+        this.attention = this.attentionFilter
+          ? page.items
+          : page.items.filter(r => r.risk_level === 'critical' || r.risk_level === 'high');
+        this.filteredTotal = page.total;
+        this.loadingAttention = false;
+      },
+      error: () => { this.attention = []; this.loadingAttention = false; },
+    });
+  }
+
+  /** Unpaged size of the band being shown; the summary may arrive after the list. */
+  get attentionTotal(): number {
+    if (this.attentionFilter) return this.filteredTotal;
+    return (this.summary?.critical_risk ?? 0) + (this.summary?.high_risk ?? 0);
+  }
+
+  trackById(_: number, r: LatestPredictionRow) { return r.student_id; }
 
   get donutSlices(): DonutSlice[] {
     if (!this.summary || this.summary.total_students === 0) return [];

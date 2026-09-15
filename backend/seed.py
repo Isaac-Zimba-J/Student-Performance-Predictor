@@ -41,7 +41,7 @@ from db.models import (
     UserRole, SESStatus, RiskLevel,
 )
 from core.auth import hash_password
-from ml.predictor import rule_based_risk, FEATURE_NAMES, FEATURE_LABELS
+from ml.predictor import rule_based_risk, rule_based_breakdown, estimate_gpa, _factor_order
 
 random.seed(42)
 
@@ -409,18 +409,9 @@ def build_features_from_seed(s, totals):
     }
 
 
-def fallback_risk_factors(features):
-    """Same shape the rule-based branch of predict_student_risk emits."""
-    factors = [
-        {
-            "factor": FEATURE_LABELS.get(k, k),
-            "impact": round((1 - features[k]) * 0.4 if k == "attendance_rate" else features[k] * 0.1, 4),
-            "value": str(round(features[k], 3)),
-        }
-        for k in FEATURE_NAMES
-    ]
-    factors.sort(key=lambda f: abs(f["impact"]), reverse=True)
-    return factors[:5]
+def seeded_risk_factors(features):
+    """Same factor list the API returns from its rule-based branch."""
+    return sorted(rule_based_breakdown(features), key=_factor_order)
 
 
 # ─── MAIN ─────────────────────────────────────────────────────────────────────
@@ -652,8 +643,8 @@ def main():
                 prediction_rows.append({
                     "id": uid(), "student_id": s["profile_id"],
                     "risk_level": level, "risk_score": score,
-                    "predicted_gpa": round(clamp(0.4 + (1 - score) * 3.6, 0.0, 4.0), 2),
-                    "top_risk_factors": json.dumps(fallback_risk_factors(features)),
+                    "predicted_gpa": estimate_gpa(features),
+                    "top_risk_factors": json.dumps(seeded_risk_factors(features)),
                     "model_version": "v1",
                     "created_at": term_start + timedelta(weeks=WEEKS, hours=rng.randint(0, 72)),
                 })
