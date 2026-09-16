@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from db.session import get_db
 from db.models import User, StudentProfile
@@ -8,9 +9,27 @@ from core.auth import verify_password, hash_password, create_access_token, get_c
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+def normalise_email(email: str) -> str:
+    """Emails are matched case-insensitively; store and look them up in one form."""
+    return email.strip().lower()
+
+
+def find_user_by_email(db: Session, email: str):
+    """
+    Case-insensitive lookup. The indexed exact match covers every account
+    stored in normalised form; the fallback catches rows created before
+    emails were normalised on registration.
+    """
+    wanted = normalise_email(email)
+    user = db.query(User).filter(User.email == wanted).first()
+    if user is None:
+        user = db.query(User).filter(func.lower(User.email) == wanted).first()
+    return user
+
+
 @router.post("/login", response_model=Token)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    user = find_user_by_email(db, data.email)
     if not user or not verify_password(data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -27,11 +46,11 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/register", response_model=UserOut, status_code=201)
 def register(data: UserCreate, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == data.email).first():
+    if find_user_by_email(db, data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     user = User(
-        email=data.email,
+        email=normalise_email(data.email),
         hashed_password=hash_password(data.password),
         full_name=data.full_name,
         role=data.role,
@@ -45,12 +64,12 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 @router.post("/register/student", response_model=UserOut, status_code=201)
 def register_student(data: StudentRegisterRequest, db: Session = Depends(get_db)):
     """Register a student with their academic profile in one flat request body."""
-    if db.query(User).filter(User.email == data.email).first():
+    if find_user_by_email(db, data.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     from db.models import UserRole
     user = User(
-        email=data.email,
+        email=normalise_email(data.email),
         hashed_password=hash_password(data.password),
         full_name=data.full_name,
         role=UserRole.STUDENT,
