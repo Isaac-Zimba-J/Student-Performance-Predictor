@@ -8,6 +8,7 @@ Models used:
 """
 
 import json
+import logging
 import numpy as np
 import pandas as pd
 from typing import Optional
@@ -25,6 +26,8 @@ except ImportError:
     ML_AVAILABLE = False
 
 import os
+
+logger = logging.getLogger(__name__)
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "saved_models")
 os.makedirs(MODEL_DIR, exist_ok=True)
@@ -298,38 +301,21 @@ def predict_student_risk(student_id: str, db: Session) -> Optional[dict]:
     X = features_to_array(features)
 
     # ── Try trained ML model first ─────────────────────────────────
+    # A broken explainability library or a stale model file must never take
+    # predictions down with it: on any failure we fall back to the rule-based
+    # scorer, which needs nothing but the features.
+    ml_result = None
     if ML_AVAILABLE and os.path.exists(RISK_CLASSIFIER_PATH):
-        classifier = xgb.XGBClassifier()
-        classifier.load_model(RISK_CLASSIFIER_PATH)
+        try:
+            ml_result = _predict_with_model(features, X)
+        except Exception:  # noqa: BLE001 — deliberately broad, see above
+            logger.warning(
+                "Trained model failed for student %s; using rule-based scoring",
+                student_id, exc_info=True,
+            )
 
-        proba = classifier.predict_proba(X)[0]
-        pred_class = int(np.argmax(proba))
-        risk_level = RISK_MAP[pred_class]
-        risk_score = float(proba[pred_class])
-
-        # SHAP explanations
-        explainer = shap.TreeExplainer(classifier)
-        shap_values = explainer.shap_values(X)
-        # For multi-class, use the predicted class's SHAP values
-        if isinstance(shap_values, list):
-            class_shap = shap_values[pred_class][0]
-        else:
-            class_shap = shap_values[0]
-
-        risk_factors = []
-        for fname, impact in zip(FEATURE_NAMES, class_shap):
-            risk_factors.append({
-                "factor": FEATURE_LABELS.get(fname, fname),
-                "impact": round(float(impact), 4),
-                "value": str(round(features[fname], 3)),
-            })
-        risk_factors.sort(key=_factor_order)
-
-        predicted_gpa = None
-        if os.path.exists(GPA_REGRESSOR_PATH):
-            gpa_model = joblib.load(GPA_REGRESSOR_PATH)
-            predicted_gpa = float(round(gpa_model.predict(X)[0], 2))
-
+    if ml_result is not None:
+        risk_level, risk_score, risk_factors, predicted_gpa = ml_result
     else:
         # ── Fallback: rule-based scoring ──────────────────────────
         risk_level, risk_score = rule_based_risk(features)
@@ -347,6 +333,42 @@ def predict_student_risk(student_id: str, db: Session) -> Optional[dict]:
         "risk_factors": risk_factors[:MAX_RISK_FACTORS],
         "raw_features": features,
     }
+
+
+def _predict_with_model(features: dict, X: np.ndarray):
+    """Score with the trained XGBoost classifier and explain it with SHAP."""
+    classifier = xgb.XGBClassifier()
+    classifier.load_model(RISK_CLASSIFIER_PATH)
+
+    proba = classifier.predict_proba(X)[0]
+    pred_class = int(np.argmax(proba))
+    risk_level = RISK_MAP[pred_class]
+    risk_score = float(proba[pred_class])
+
+    # SHAP explanations
+    explainer = shap.TreeExplainer(classifier)
+    shap_values = explainer.shap_values(X)
+    # For multi-class, use the predicted class's SHAP values
+    if isinstance(shap_values, list):
+        class_shap = shap_values[pred_class][0]
+    else:
+        class_shap = shap_values[0]
+
+    risk_factors = []
+    for fname, impact in zip(FEATURE_NAMES, class_shap):
+        risk_factors.append({
+            "factor": FEATURE_LABELS.get(fname, fname),
+            "impact": round(float(impact), 4),
+            "value": str(round(features[fname], 3)),
+        })
+    risk_factors.sort(key=_factor_order)
+
+    predicted_gpa = None
+    if os.path.exists(GPA_REGRESSOR_PATH):
+        gpa_model = joblib.load(GPA_REGRESSOR_PATH)
+        predicted_gpa = float(round(gpa_model.predict(X)[0], 2))
+
+    return risk_level, risk_score, risk_factors, predicted_gpa
 
 
 def _factor_order(factor: dict):
