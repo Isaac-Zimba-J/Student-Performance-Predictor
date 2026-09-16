@@ -17,7 +17,8 @@ import { AuthService } from '../../../core/services/auth.service';
 
         <div class="form-group">
           <label>Email address</label>
-          <input type="email" [(ngModel)]="email" placeholder="you@university.ac.zm" (keyup.enter)="login()">
+          <input type="email" [(ngModel)]="email" placeholder="you@university.ac.zm" (keyup.enter)="login()"
+                 autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="username">
         </div>
         <div class="form-group">
           <label>Password</label>
@@ -39,7 +40,9 @@ export class LoginComponent {
 
   login() {
     this.loading = true; this.error = '';
-    this.auth.login({ email: this.email, password: this.password }).subscribe({
+    // Emails are case-insensitive; normalise so a capitalised first letter
+    // from a phone keyboard or browser autocorrect can't cause a rejection.
+    this.auth.login({ email: this.email.trim().toLowerCase(), password: this.password }).subscribe({
       next: res => {
         const route = res.role === 'student' ? '/profile' : '/dashboard';
         this.router.navigate([route]);
